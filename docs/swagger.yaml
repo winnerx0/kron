@@ -1,0 +1,81 @@
+basePath: /
+definitions:
+  job.CreateJobRequest:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      endpoint:
+        type: string
+      headers:
+        additionalProperties: {}
+        type: object
+      method:
+        type: string
+      name:
+        type: string
+      schedule:
+        type: string
+    type: object
+  job.CreateJobResponse:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      endpoint:
+        type: string
+      headers:
+        additionalProperties: {}
+        type: object
+      id:
+        type: string
+      method:
+        type: string
+      name:
+        type: string
+      schedule:
+        type: string
+    type: object
+  job.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:5000
+info:
+  contact: {}
+  description: This is a simple API for scheduling and executing jobs.
+  title: Kron API
+  version: "1.0"
+paths:
+  /create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new job.
+      parameters:
+      - description: Job
+        in: body
+        name: job
+        required: true
+        schema:
+          $ref: '#/definitions/job.CreateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/job.CreateJobResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Create a job
+swagger: "2.0"
