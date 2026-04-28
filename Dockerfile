@@ -16,4 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /app/kron /app/
 
+EXPOSE 5000
+
 ENTRYPOINT ["./kron"]

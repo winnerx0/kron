@@ -1,7 +1,10 @@
 package execution
 
+import "context"
+
 type Repository interface {
-	Save(execution Execution) error
-	FindByJobID(jobID uint) ([]Execution, error)
-	
+	Save(ctx context.Context, execution Execution) error
+	FindByJobID(ctx context.Context, jobID string) ([]Execution, error)
+	FindAll(ctx context.Context) ([]Execution, error)
+	Update(ctx context.Context, execution Execution) error
 }

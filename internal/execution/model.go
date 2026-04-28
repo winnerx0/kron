@@ -5,27 +5,17 @@ import (
 )
 
 type Execution struct {
-	ID       int             `gorm:"primaryKey"`
-	JobID    string          `gorm:"job_id"`
-	Status   ExecutionStatus `gorm:"type:varchar(20);not null"`
-	Started  time.Time       `gorm:"not null"`
-	Finished time.Time       `gorm:"not null"`
+	ID       string          `gorm:"primaryKey,default:uuid_generate_v4()" json:"id"`
+	JobID    string          `gorm:"job_id" json:"jobID"`
+	Status   ExecutionStatus `gorm:"type:varchar(20);not null" json:"status"`
+	Started  time.Time       `gorm:"not null" json:"startedAt"`
+	Finished time.Time       `gorm:"not null" json:"finishedAt"`
 }
 
-type ExecutionStatus int
+type ExecutionStatus string
 
 const (
-	PENDING = iota
-	SUCCESS 
-	FAILED
+	PENDING ExecutionStatus = "pending"
+	SUCCESS ExecutionStatus = "success"
+	FAILED  ExecutionStatus = "failed"
 )
-
-var StatusName = map[ExecutionStatus]string{
-	SUCCESS: "Success",
-	PENDING: "Pending",
-	FAILED:  "Failed",
-}
-
-func (s ExecutionStatus) String() string {
-	return StatusName[s]
-}

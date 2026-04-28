@@ -3,10 +3,6 @@ package database
 import (
 	"fmt"
 	"time"
-
-
-
-	
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
 	"gorm.io/driver/postgres"
@@ -32,7 +28,7 @@ func NewDatabase(host, user, password, port, name string) *Database {
 }
 
 func (d *Database) Start() *gorm.DB {
-	dbUrl := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Africa/Lagos",
+	dbUrl := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		d.dbHost, d.dbUser, d.dbPassword, d.dbName, d.dbPort)
 
 	db, err := gorm.Open(postgres.Open(dbUrl), &gorm.Config{})

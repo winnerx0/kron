@@ -1,10 +1,12 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
-	"github.com/swaggo/http-swagger/v2"
+	"github.com/go-chi/cors"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/winnerx0/kron/internal/config"
 	"github.com/winnerx0/kron/internal/database"
 	"github.com/winnerx0/kron/internal/execution"
@@ -29,25 +31,48 @@ func (a *App) Start() error {
 
 	executionRepo := execution.NewPostgresRepository(db)
 
-	// executionService := execution.NewExecutionService(executionRepo)
+	executionService := execution.NewExecutionService(executionRepo)
 
-	// executionHandler := NewExecutionHandler(executionService)
+	executionHandler := NewExecutionHandler(executionService)
 
 	jobRepo := job.NewRepository(db)
 
 	jobService := job.NewJobService(jobRepo, executionRepo)
 
 	jobHandler := NewJobHandler(jobService)
-	
+
 	r := chi.NewRouter()
+
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	
-	r.Post("/create", jobHandler.Create)
 
+	r.Route("/job", func(r chi.Router) {
+
+		r.Post("/create", jobHandler.Create)
+
+		r.Put("/{jobID}", jobHandler.UpdateJob)
+
+		r.Delete("/{jobID}", jobHandler.DeleteJob)
+
+		r.Get("/all", jobHandler.FindAll)
+	})
+
+	r.Route("/execution", func(r chi.Router) {
+
+		r.Get("/all", executionHandler.FindAll)
+	})
+
+	fmt.Println("Listening to server on port 5000")
 	return http.ListenAndServe(":5000", r)
 }
