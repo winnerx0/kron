@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Calendar, Activity, CheckCircle, XCircle, ArrowRight, Clock } from 'lucide-react'
+import { Calendar, Activity, CheckCircle, XCircle, ArrowRight } from 'lucide-react'
 import { getJobs, getExecutions, type Job, type Execution } from '@/lib/api'
 
 function StatCard({
