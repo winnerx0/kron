@@ -28,7 +28,7 @@ services:
       - ./web:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=https://kron.winnerx0.dev
+      - VITE_API_URL=https://kron.winnerx0.dev/api
     networks:
       - backend
   backend:
