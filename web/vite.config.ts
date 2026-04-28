@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: [process.env.VITE_API_URL?.split(':')[1]?.replace('//', '') || 'localhost'],
+    allowedHosts: [process.env.VITE_API_URL?.split(':')[1]?.replace('//', '').replace('/api', '') || 'localhost'],
     port: 3000,
     proxy: {
       '/job/': process.env.VITE_API_URL || 'http://localhost:5000',
