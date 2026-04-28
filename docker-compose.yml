@@ -72,3 +72,4 @@ networks:
 volumes:
   kron_db:
   nginx_logs:
+  nginx_certs:
