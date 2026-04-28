@@ -12,9 +12,9 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/job/': 'http://localhost:5000',
-      '/execution/': 'http://localhost:5000',
-      '/health': 'http://localhost:5000',
+      '/job/': process.env.VITE_API_URL || 'http://localhost:5000',
+      '/execution/': process.env.VITE_API_URL || 'http://localhost:5000',
+      '/health': process.env.VITE_API_URL || 'http://localhost:5000',
     },
   },
   define: {
