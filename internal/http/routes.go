@@ -51,26 +51,30 @@ func (a *App) Start() error {
 		MaxAge:           300,
 	}))
 
+	r.Route("/api", func(r chi.Router) {
+
+		r.Route("/job", func(r chi.Router) {
+
+			r.Post("/create", jobHandler.Create)
+
+			r.Put("/{jobID}", jobHandler.UpdateJob)
+
+			r.Delete("/{jobID}", jobHandler.DeleteJob)
+
+			r.Get("/all", jobHandler.FindAll)
+		})
+
+		r.Route("/execution", func(r chi.Router) {
+
+			r.Get("/all", executionHandler.FindAll)
+		})
+
+	})
+
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	})
-
-	r.Route("/job", func(r chi.Router) {
-
-		r.Post("/create", jobHandler.Create)
-
-		r.Put("/{jobID}", jobHandler.UpdateJob)
-
-		r.Delete("/{jobID}", jobHandler.DeleteJob)
-
-		r.Get("/all", jobHandler.FindAll)
-	})
-
-	r.Route("/execution", func(r chi.Router) {
-
-		r.Get("/all", executionHandler.FindAll)
 	})
 
 	fmt.Println("Listening to server on port 5000")
