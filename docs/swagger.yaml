@@ -1,5 +1,28 @@
 basePath: /
 definitions:
+  execution.Execution:
+    properties:
+      finished:
+        type: string
+      id:
+        type: string
+      jobID:
+        type: string
+      started:
+        type: string
+      status:
+        $ref: '#/definitions/execution.ExecutionStatus'
+    type: object
+  execution.ExecutionStatus:
+    enum:
+    - pending
+    - success
+    - failed
+    type: string
+    x-enum-varnames:
+    - PENDING
+    - SUCCESS
+    - FAILED
   job.CreateJobRequest:
     properties:
       body:
@@ -12,11 +35,23 @@ definitions:
         additionalProperties: {}
         type: object
       method:
+        enum:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - PATCH
         type: string
       name:
         type: string
       schedule:
         type: string
+    required:
+    - endpoint
+    - headers
+    - method
+    - name
+    - schedule
     type: object
   job.CreateJobResponse:
     properties:
@@ -43,6 +78,64 @@ definitions:
       error:
         type: string
     type: object
+  job.JobResponse:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      endpoint:
+        type: string
+      headers:
+        additionalProperties: {}
+        type: object
+      id:
+        type: string
+      method:
+        type: string
+      name:
+        type: string
+      schedule:
+        type: string
+    type: object
+  job.UpdateJobRequest:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      endpoint:
+        type: string
+      headers:
+        additionalProperties: {}
+        type: object
+      method:
+        type: string
+      name:
+        type: string
+      schedule:
+        type: string
+    type: object
+  job.UpdateJobResponse:
+    properties:
+      body:
+        type: string
+      description:
+        type: string
+      endpoint:
+        type: string
+      headers:
+        additionalProperties: {}
+        type: object
+      id:
+        type: string
+      method:
+        type: string
+      name:
+        type: string
+      schedule:
+        type: string
+    type: object
 host: localhost:5000
 info:
   contact: {}
@@ -50,7 +143,45 @@ info:
   title: Kron API
   version: "1.0"
 paths:
-  /create:
+  /execution/all:
+    get:
+      description: Get a list of all executions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/execution.Execution'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Find all executions
+      tags:
+      - executions
+  /job/all:
+    get:
+      description: Find all created jobs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/job.JobResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Find all jobs
+  /job/create:
     post:
       consumes:
       - application/json
@@ -78,4 +209,55 @@ paths:
           schema:
             $ref: '#/definitions/job.ErrorResponse'
       summary: Create a job
+  /jobs/{jobID}:
+    delete:
+      description: Delete a job by its ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: jobID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Delete a job
+    put:
+      description: Update a job by its ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: jobID
+        required: true
+        type: string
+      - description: Job
+        in: body
+        name: job
+        required: true
+        schema:
+          $ref: '#/definitions/job.UpdateJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/job.UpdateJobResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Update a job
 swagger: "2.0"
