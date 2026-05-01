@@ -67,6 +67,15 @@ services:
       timeout: 5s
       retries: 5
   certbot:
+    image: certbot/certbot:latest
+    profiles:
+      - certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - frontend
+  certbot-renew:
     container_name: kron_certbot
     image: certbot/certbot:latest
     entrypoint: /bin/sh
