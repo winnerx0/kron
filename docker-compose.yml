@@ -38,9 +38,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DB_HOST=kron_db
+      - DB_HOST=db
       - DB_USER=postgres
-      - DB_PASSWORD=2007
+      - DB_PASSWORD=password
       - DB_PORT=5432
       - DB_NAME=kron
     depends_on:
@@ -55,41 +55,22 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=2007
+      - POSTGRES_PASSWORD=password
       - POSTGRES_DB=kron
     volumes:
       - kron_db:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kron"]
       interval: 10s
       timeout: 5s
       retries: 5
   certbot:
-    image: certbot/certbot:latest
-    profiles:
-      - certbot
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    networks:
-      - frontend
-  certbot-standalone:
-    image: certbot/certbot:latest
-    profiles:
-      - certbot
-    ports:
-      - "80:80"
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-    networks:
-      - frontend
-  certbot-renew:
     container_name: kron_certbot
     image: certbot/certbot:latest
     entrypoint: /bin/sh
-    command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done"
+    command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - certbot_www:/var/www/certbot
