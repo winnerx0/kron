@@ -75,6 +75,16 @@ services:
       - certbot_www:/var/www/certbot
     networks:
       - frontend
+  certbot-standalone:
+    image: certbot/certbot:latest
+    profiles:
+      - certbot
+    ports:
+      - "80:80"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+    networks:
+      - frontend
   certbot-renew:
     container_name: kron_certbot
     image: certbot/certbot:latest
