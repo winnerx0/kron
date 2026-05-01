@@ -9,7 +9,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - letsencrypt:/etc/letsencrypt:ro
+      - nginx_certs:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
       - nginx_logs:/var/log/nginx
     depends_on:
@@ -72,7 +72,7 @@ services:
     entrypoint: /bin/sh
     command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
     volumes:
-      - letsencrypt:/etc/letsencrypt
+      - nginx_certs:/etc/letsencrypt
       - certbot_www:/var/www/certbot
     networks:
       - frontend
@@ -84,5 +84,5 @@ volumes:
   kron_db:
   nginx_logs:
   nginx_certs:
+    external: true
   certbot_www:
-  letsencrypt:
