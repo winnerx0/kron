@@ -69,13 +69,10 @@ jobs:
             if [ -d "$DEPLOY_DIR/.git" ]; then
               git -C "$DEPLOY_DIR" fetch origin
               git -C "$DEPLOY_DIR" reset --hard origin/$BRANCH
-            elif [ -d "$DEPLOY_DIR" ]; then
-              rm -rf "$DEPLOY_DIR"
-              git clone --branch "$BRANCH" "$REPO" "$DEPLOY_DIR"
             else
               git clone --branch "$BRANCH" "$REPO" "$DEPLOY_DIR"
             fi
-
+            
             ln -s /etc/kron/.env /opt/kron/.env
 
             cd "$DEPLOY_DIR"
