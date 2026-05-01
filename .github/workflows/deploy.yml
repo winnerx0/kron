@@ -72,8 +72,6 @@ jobs:
             else
               git clone --branch "$BRANCH" "$REPO" "$DEPLOY_DIR"
             fi
-            
-            ln -s /etc/kron/.env /opt/kron/.env
 
             cd "$DEPLOY_DIR"
             docker compose down --remove-orphans
