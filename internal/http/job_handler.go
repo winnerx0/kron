@@ -119,6 +119,60 @@ func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+// @Summary Run a job
+// @Description Immediately run a job by its ID
+// @Param jobID path string true "Job ID"
+// @Success 202
+// @Failure 400 {object} job.ErrorResponse
+// @Failure 500 {object} job.ErrorResponse
+// @Router /jobs/{jobID}/run [post]
+func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+		return
+	}
+
+	if err := h.service.RunJob(r.Context(), jobID); err != nil {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(500)
+		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// @Summary Stop a job
+// @Description Stop a running job by its ID
+// @Param jobID path string true "Job ID"
+// @Success 202
+// @Failure 400 {object} job.ErrorResponse
+// @Failure 404 {object} job.ErrorResponse
+// @Router /jobs/{jobID}/stop [post]
+func (h *JobHandler) StopJob(w http.ResponseWriter, r *http.Request) {
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+		return
+	}
+
+	if !h.service.StopJob(jobID) {
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(404)
+		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Job is not running"})
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
 // @Summary Update a job
 // @Description Update a job by its ID
 // @Param jobID path string true "Job ID"

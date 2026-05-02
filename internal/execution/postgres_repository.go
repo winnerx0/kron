@@ -9,6 +9,7 @@ import (
 type PostgresRepository struct {
 	db *gorm.DB
 }
+
 func NewPostgresRepository(db *gorm.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
@@ -23,10 +24,20 @@ func (r *PostgresRepository) FindByJobID(ctx context.Context, jobID string) ([]E
 	return executions, err
 }
 
-func (r *PostgresRepository) FindAll(ctx context.Context) ([]Execution, error) {
+func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int) ([]Execution, int64, error) {
 	var executions []Execution
-	err := r.db.WithContext(ctx).Find(&executions).Error
-	return executions, err
+	var total int64
+
+	if err := r.db.WithContext(ctx).Model(&Execution{}).Count(&total).Error; err != nil {
+		return executions, 0, err
+	}
+
+	err := r.db.WithContext(ctx).
+		Order("started DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&executions).Error
+	return executions, total, err
 }
 
 func (r *PostgresRepository) Update(ctx context.Context, execution Execution) error {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,13 @@ type Service struct {
 	executionRepo execution.Repository
 	client        http.Client
 	secrets       secret.Manager
+	activeMu      *sync.Mutex
+	activeRuns    map[string]activeRun
+}
+
+type activeRun struct {
+	executionID string
+	cancel      context.CancelFunc
 }
 
 func NewJobService(repo Repository, executionRepo execution.Repository, managers ...secret.Manager) Service {
@@ -26,7 +34,14 @@ func NewJobService(repo Repository, executionRepo execution.Repository, managers
 	if len(managers) > 0 && managers[0] != nil {
 		manager = managers[0]
 	}
-	return Service{repo: repo, executionRepo: executionRepo, client: http.Client{}, secrets: manager}
+	return Service{
+		repo:          repo,
+		executionRepo: executionRepo,
+		client:        http.Client{},
+		secrets:       manager,
+		activeMu:      &sync.Mutex{},
+		activeRuns:    map[string]activeRun{},
+	}
 }
 
 func (s *Service) RunJobs(ctx context.Context) {
@@ -46,14 +61,17 @@ func (s *Service) RunJobs(ctx context.Context) {
 			}
 
 			for _, job := range jobs {
-				go s.ExecuteJob(ctx, job)
-
+				go s.ExecuteJob(ctx, job, true)
 			}
 		}
 	}
 }
 
 func (s *Service) Create(ctx context.Context, job Job) (Job, error) {
+	if err := setNextRun(&job); err != nil {
+		return Job{}, err
+	}
+
 	job, err := s.encryptJobSecrets(job, nil)
 	if err != nil {
 		return Job{}, err
@@ -70,6 +88,10 @@ func (s *Service) Create(ctx context.Context, job Job) (Job, error) {
 func (s *Service) Update(ctx context.Context, job Job) (Job, error) {
 	existingJob, err := s.repo.FindByID(ctx, job.ID)
 	if err != nil {
+		return Job{}, err
+	}
+
+	if err := setNextRun(&job); err != nil {
 		return Job{}, err
 	}
 
@@ -113,32 +135,88 @@ func (s *Service) FindAll(ctx context.Context) ([]JobResponse, error) {
 	return jobResponses, nil
 }
 
-func (s *Service) ExecuteJob(ctx context.Context, job Job) {
+func (s *Service) RunJob(ctx context.Context, id string) error {
+	job, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	go s.ExecuteJob(ctx, job, false)
+	return nil
+}
+
+func (s *Service) StopJob(id string) bool {
+	s.ensureActiveExecutionTracking()
+
+	s.activeMu.Lock()
+	run, ok := s.activeRuns[id]
+	s.activeMu.Unlock()
+
+	if !ok {
+		return false
+	}
+
+	run.cancel()
+	return true
+}
+
+func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool) {
+	s.ensureActiveExecutionTracking()
+
+	executionCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if advanceSchedule {
+		s.advanceNextRun(context.Background(), job)
+	}
 
 	newExecution := execution.Execution{
 		ID:      uuid.NewString(),
 		JobID:   job.ID,
-		Status:  execution.PENDING,
+		Status:  execution.RUNNING,
 		Started: time.Now(),
 	}
 
-	err := s.executionRepo.Save(ctx, newExecution)
+	s.activeMu.Lock()
+	if existingRun, ok := s.activeRuns[job.ID]; ok {
+		existingRun.cancel()
+	}
+	s.activeRuns[job.ID] = activeRun{executionID: newExecution.ID, cancel: cancel}
+	s.activeMu.Unlock()
 
+	defer func() {
+		s.activeMu.Lock()
+		if run, ok := s.activeRuns[job.ID]; ok && run.executionID == newExecution.ID {
+			delete(s.activeRuns, job.ID)
+		}
+		s.activeMu.Unlock()
+	}()
+
+	err := s.executionRepo.Save(executionCtx, newExecution)
 	if err != nil {
 		log.Println("Error saving execution", err)
 		return
 	}
 
-	req, err := http.NewRequestWithContext(ctx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
+	finish := func(status execution.ExecutionStatus) {
+		newExecution.Finished = time.Now()
+		newExecution.Status = status
+		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
+			log.Println("Error updating execution", err)
+		}
+	}
 
+	req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
 	if err != nil {
 		log.Println("Error creating request", err)
+		finish(execution.FAILED)
 		return
 	}
 
 	headers, err := s.decryptHeaders(job.Headers)
 	if err != nil {
 		log.Println("Error decrypting job headers", err)
+		finish(execution.FAILED)
 		return
 	}
 
@@ -147,45 +225,59 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job) {
 	}
 
 	resp, err := s.client.Do(req)
-
 	if err != nil {
 		log.Println("Error sending request", err)
+		if executionCtx.Err() != nil {
+			finish(execution.STOPPED)
+			return
+		}
+		finish(execution.FAILED)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		log.Printf("Error: received status code %d for job %s", resp.StatusCode, job.Name)
+		finish(execution.FAILED)
 		return
 	}
 
-	sched, _ := cron.ParseStandard(job.Schedule)
+	finish(execution.SUCCESS)
+}
 
-	job.NextRunAt = sched.Next(time.Now())
+func (s *Service) advanceNextRun(ctx context.Context, job Job) {
+	if err := setNextRun(&job); err != nil {
+		log.Println("Error parsing cron expression", err)
+		return
+	}
 
-	job, err = s.encryptJobSecrets(job, nil)
+	job, err := s.encryptJobSecrets(job, nil)
 	if err != nil {
 		log.Println("Error encrypting job headers", err)
 		return
 	}
 
-	_, err = s.repo.Update(ctx, job)
-
-	if err != nil {
+	if _, err := s.repo.Update(ctx, job); err != nil {
 		log.Println("Error updating job", err)
-		return
 	}
+}
 
-	newExecution.Finished = time.Now()
-	newExecution.Status = execution.SUCCESS
-
-	err = s.executionRepo.Update(ctx, newExecution)
-
+func setNextRun(job *Job) error {
+	sched, err := cron.ParseStandard(job.Schedule)
 	if err != nil {
-		log.Println("Error saving execution", err)
-		return
+		return err
 	}
+	job.NextRunAt = sched.Next(time.Now())
+	return nil
+}
 
+func (s *Service) ensureActiveExecutionTracking() {
+	if s.activeMu == nil {
+		s.activeMu = &sync.Mutex{}
+	}
+	if s.activeRuns == nil {
+		s.activeRuns = map[string]activeRun{}
+	}
 }
 
 func (s *Service) secretManager() secret.Manager {
