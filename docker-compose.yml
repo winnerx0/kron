@@ -38,11 +38,11 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_PORT=5432
-      - DB_NAME=kron
+      - DB_HOST=${DB_HOST:-db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-kron}
       - KRON_ENCRYPTION_KEY=${KRON_ENCRYPTION_KEY}
     depends_on:
       db:
