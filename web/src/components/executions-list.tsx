@@ -62,13 +62,19 @@ function EmptyState() {
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString("en-US", {
+  const date = new Date(dateStr);
+  if (date.getFullYear() <= 1) return "—";
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+function isUnfinished(status: string) {
+  return status === "pending" || status === "running";
 }
 
 export function ExecutionsList() {
@@ -151,7 +157,6 @@ export function ExecutionsList() {
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground flex-1">
                 Completed
               </span>
-              
             </div>
 
             {executions.map((execution, idx) => (
@@ -170,7 +175,9 @@ export function ExecutionsList() {
                   {formatDate(execution.startedAt)}
                 </span>
                 <span className="text-xs text-muted-foreground flex-1">
-                  {formatDate(execution.finishedAt)}
+                  {isUnfinished(execution.status)
+                    ? ""
+                    : formatDate(execution.finishedAt)}
                 </span>
               </div>
             ))}
