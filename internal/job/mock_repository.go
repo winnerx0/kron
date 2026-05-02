@@ -20,6 +20,11 @@ func (mock *MockRepository) FindAllNextRun(ctx context.Context) ([]Job, error) {
 	return args.Get(0).([]Job), args.Error(1)
 }
 
+func (mock *MockRepository) FindByID(ctx context.Context, id string) (Job, error) {
+	args := mock.Called(ctx, id)
+	return args.Get(0).(Job), args.Error(1)
+}
+
 func (mock *MockRepository) Create(ctx context.Context, job Job) (Job, error) {
 	args := mock.Called(ctx, job)
 	return args.Get(0).(Job), args.Error(1)
