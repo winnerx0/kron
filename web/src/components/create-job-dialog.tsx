@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { X, Plus, Trash2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createJob, updateJob, type Job, type CreateJobRequest } from '@/lib/api'
@@ -29,6 +29,22 @@ const EMPTY: CreateJobRequest = {
 
 type HeaderRow = { key: string; value: string }
 
+const SENSITIVE_HEADERS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'x-api-key',
+  'api-key',
+  'x-auth-token',
+  'x-access-token',
+  'x-secret',
+  'cookie',
+  'set-cookie',
+])
+
+function isSensitiveHeader(key: string) {
+  return SENSITIVE_HEADERS.has(key.trim().toLowerCase())
+}
+
 function headersToRows(h: Record<string, string>): HeaderRow[] {
   const rows = Object.entries(h).map(([key, value]) => ({ key, value }))
   return rows.length ? rows : []
@@ -53,6 +69,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export function CreateJobDialog({ open, onOpenChange, job, onJobSaved }: Props) {
   const [form, setForm] = useState<CreateJobRequest>(EMPTY)
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
+  const [visibleHeaders, setVisibleHeaders] = useState<Set<number>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -66,6 +83,7 @@ export function CreateJobDialog({ open, onOpenChange, job, onJobSaved }: Props) 
       setForm(EMPTY)
       setHeaderRows([])
     }
+    setVisibleHeaders(new Set())
     setError(null)
   }, [job, open])
 
@@ -199,11 +217,40 @@ export function CreateJobDialog({ open, onOpenChange, job, onJobSaved }: Props) 
                         placeholder="Value"
                         value={row.value}
                         onChange={e => setHeaderRows(rows => rows.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
+                        type={isSensitiveHeader(row.key) && !visibleHeaders.has(i) ? 'password' : 'text'}
                         className="font-mono text-xs"
                         disabled={loading}
                       />
+                      {isSensitiveHeader(row.key) && (
+                        <button
+                          type="button"
+                          onClick={() => setVisibleHeaders(visible => {
+                            const next = new Set(visible)
+                            next.has(i) ? next.delete(i) : next.add(i)
+                            return next
+                          })}
+                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors shrink-0"
+                          aria-label={visibleHeaders.has(i) ? 'Hide header value' : 'Show header value'}
+                          title={visibleHeaders.has(i) ? 'Hide header value' : 'Show header value'}
+                          disabled={loading}
+                        >
+                          {visibleHeaders.has(i)
+                            ? <EyeOff className="w-3.5 h-3.5" />
+                            : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
                       <button type="button"
-                        onClick={() => setHeaderRows(rows => rows.filter((_, j) => j !== i))}
+                        onClick={() => {
+                          setHeaderRows(rows => rows.filter((_, j) => j !== i))
+                          setVisibleHeaders(visible => {
+                            const next = new Set<number>()
+                            visible.forEach(index => {
+                              if (index < i) next.add(index)
+                              if (index > i) next.add(index - 1)
+                            })
+                            return next
+                          })
+                        }}
                         className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

@@ -43,6 +43,7 @@ services:
       - DB_PASSWORD=password
       - DB_PORT=5432
       - DB_NAME=kron
+      - KRON_ENCRYPTION_KEY=${KRON_ENCRYPTION_KEY}
     depends_on:
       db:
         condition: service_healthy

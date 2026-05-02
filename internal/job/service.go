@@ -11,16 +11,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/winnerx0/kron/internal/execution"
+	"github.com/winnerx0/kron/internal/secret"
 )
 
 type Service struct {
 	repo          Repository
 	executionRepo execution.Repository
 	client        http.Client
+	secrets       secret.Manager
 }
 
-func NewJobService(repo Repository, executionRepo execution.Repository) Service {
-	return Service{repo: repo, executionRepo: executionRepo, client: http.Client{}}
+func NewJobService(repo Repository, executionRepo execution.Repository, managers ...secret.Manager) Service {
+	var manager secret.Manager = secret.NoopManager{}
+	if len(managers) > 0 && managers[0] != nil {
+		manager = managers[0]
+	}
+	return Service{repo: repo, executionRepo: executionRepo, client: http.Client{}, secrets: manager}
 }
 
 func (s *Service) RunJobs(ctx context.Context) {
@@ -48,11 +54,36 @@ func (s *Service) RunJobs(ctx context.Context) {
 }
 
 func (s *Service) Create(ctx context.Context, job Job) (Job, error) {
-	return s.repo.Create(ctx, job)
+	job, err := s.encryptJobSecrets(job, nil)
+	if err != nil {
+		return Job{}, err
+	}
+
+	createdJob, err := s.repo.Create(ctx, job)
+	if err != nil {
+		return Job{}, err
+	}
+
+	return s.decryptJobSecrets(createdJob)
 }
 
 func (s *Service) Update(ctx context.Context, job Job) (Job, error) {
-	return s.repo.Update(ctx, job)
+	existingJob, err := s.repo.FindByID(ctx, job.ID)
+	if err != nil {
+		return Job{}, err
+	}
+
+	job, err = s.encryptJobSecrets(job, existingJob.Headers)
+	if err != nil {
+		return Job{}, err
+	}
+
+	updatedJob, err := s.repo.Update(ctx, job)
+	if err != nil {
+		return Job{}, err
+	}
+
+	return s.decryptJobSecrets(updatedJob)
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
@@ -74,7 +105,7 @@ func (s *Service) FindAll(ctx context.Context) ([]JobResponse, error) {
 			Schedule:    job.Schedule,
 			Endpoint:    job.Endpoint,
 			Method:      job.Method,
-			Headers:     job.Headers,
+			Headers:     s.decryptHeadersForResponse(job.Headers),
 			Body:        job.Body,
 		})
 	}
@@ -105,8 +136,14 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job) {
 		return
 	}
 
-	for key, value := range job.Headers {
-		req.Header.Set(key, fmt.Sprintf("%v", value))
+	headers, err := s.decryptHeaders(job.Headers)
+	if err != nil {
+		log.Println("Error decrypting job headers", err)
+		return
+	}
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 
 	resp, err := s.client.Do(req)
@@ -126,6 +163,12 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job) {
 
 	job.NextRunAt = sched.Next(time.Now())
 
+	job, err = s.encryptJobSecrets(job, nil)
+	if err != nil {
+		log.Println("Error encrypting job headers", err)
+		return
+	}
+
 	_, err = s.repo.Update(ctx, job)
 
 	if err != nil {
@@ -143,4 +186,84 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job) {
 		return
 	}
 
+}
+
+func (s *Service) secretManager() secret.Manager {
+	if s.secrets == nil {
+		return secret.NoopManager{}
+	}
+	return s.secrets
+}
+
+func (s *Service) encryptJobSecrets(job Job, existingHeaders map[string]any) (Job, error) {
+	headers := make(map[string]any, len(job.Headers))
+	for key, value := range job.Headers {
+		valueString := fmt.Sprintf("%v", value)
+		if !secret.IsSensitiveHeader(key) {
+			headers[key] = value
+			continue
+		}
+
+		if secret.IsMasked(valueString) && existingHeaders != nil {
+			if existingValue, ok := existingHeaders[key]; ok {
+				headers[key] = existingValue
+				continue
+			}
+		}
+
+		encryptedValue, err := s.secretManager().Encrypt(valueString)
+		if err != nil {
+			return Job{}, err
+		}
+		headers[key] = encryptedValue
+	}
+
+	job.Headers = headers
+	return job, nil
+}
+
+func (s *Service) decryptHeaders(headers map[string]any) (map[string]string, error) {
+	decrypted := make(map[string]string, len(headers))
+	for key, value := range headers {
+		valueString := fmt.Sprintf("%v", value)
+		if !secret.IsSensitiveHeader(key) {
+			decrypted[key] = valueString
+			continue
+		}
+
+		decryptedValue, err := s.secretManager().Decrypt(valueString)
+		if err != nil {
+			return nil, err
+		}
+		decrypted[key] = decryptedValue
+	}
+	return decrypted, nil
+}
+
+func (s *Service) decryptJobSecrets(job Job) (Job, error) {
+	headers, err := s.decryptHeaders(job.Headers)
+	if err != nil {
+		return Job{}, err
+	}
+
+	decryptedHeaders := make(map[string]any, len(headers))
+	for key, value := range headers {
+		decryptedHeaders[key] = value
+	}
+
+	job.Headers = decryptedHeaders
+	return job, nil
+}
+
+func (s *Service) decryptHeadersForResponse(headers map[string]any) map[string]any {
+	decrypted, err := s.decryptHeaders(headers)
+	if err != nil {
+		return headers
+	}
+
+	responseHeaders := make(map[string]any, len(decrypted))
+	for key, value := range decrypted {
+		responseHeaders[key] = value
+	}
+	return responseHeaders
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/winnerx0/kron/internal/database"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
+	"github.com/winnerx0/kron/internal/secret"
 )
 
 type App struct {
@@ -37,7 +38,12 @@ func (a *App) Start() error {
 
 	jobRepo := job.NewRepository(db)
 
-	jobService := job.NewJobService(jobRepo, executionRepo)
+	secretManager, err := secret.NewAESGCMManager(a.config.EncryptionKey)
+	if err != nil {
+		return fmt.Errorf("failed to initialize secret encryption: %w", err)
+	}
+
+	jobService := job.NewJobService(jobRepo, executionRepo, secretManager)
 
 	jobHandler := NewJobHandler(jobService)
 
