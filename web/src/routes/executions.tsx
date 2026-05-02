@@ -75,6 +75,10 @@ function duration(start?: string, end?: string) {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
+function isUnfinished(status: string) {
+  return status === "pending" || status === "running";
+}
+
 export function ExecutionsPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,10 +247,12 @@ export function ExecutionsPage() {
                     {fmt(ex.startedAt)}
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
-                    {fmt(ex.finishedAt)}
+                    {isUnfinished(ex.status) ? "" : fmt(ex.finishedAt)}
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {duration(ex.startedAt, ex.finishedAt)}
+                    {isUnfinished(ex.status)
+                      ? ""
+                      : duration(ex.startedAt, ex.finishedAt)}
                   </td>
                 </tr>
               ))
