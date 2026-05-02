@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -45,6 +46,8 @@ func (a *App) Start() error {
 
 	jobService := job.NewJobService(jobRepo, executionRepo, secretManager)
 
+	go jobService.RunJobs(context.Background())
+
 	jobHandler := NewJobHandler(jobService)
 
 	r := chi.NewRouter()
@@ -68,6 +71,10 @@ func (a *App) Start() error {
 			r.Delete("/{jobID}", jobHandler.DeleteJob)
 
 			r.Get("/all", jobHandler.FindAll)
+
+			r.Post("/{jobID}/run", jobHandler.RunJob)
+
+			r.Post("/{jobID}/stop", jobHandler.StopJob)
 		})
 
 		r.Route("/execution", func(r chi.Router) {

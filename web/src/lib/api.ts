@@ -1,69 +1,102 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export interface Job {
-  id: string
-  name: string
-  description?: string
-  schedule: string
-  endpoint: string
-  method: string
-  headers: Record<string, string>
-  body?: string
-  createdAt?: string
-  updatedAt?: string
+  id: string;
+  name: string;
+  description?: string;
+  schedule: string;
+  endpoint: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Execution {
-  id: string
-  jobID: string
-  status: string
-  startedAt?: string
-  finishedAt?: string
+  id: string;
+  jobID: string;
+  status: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface PaginatedExecutions {
+  items: Execution[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CreateJobRequest {
-  name: string
-  description?: string
-  schedule: string
-  endpoint: string
-  method: string
-  headers: Record<string, string>
-  body?: string
+  name: string;
+  description?: string;
+  schedule: string;
+  endpoint: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: string;
 }
 
 export async function getJobs(): Promise<Job[]> {
-  const res = await fetch(`${API_URL}/job/all`)
-  if (!res.ok) throw new Error('Failed to fetch jobs')
-  return res.json()
+  const res = await fetch(`${API_URL}/job/all`);
+  if (!res.ok) throw new Error("Failed to fetch jobs");
+  return res.json();
 }
 
 export async function createJob(job: CreateJobRequest): Promise<Job> {
   const res = await fetch(`${API_URL}/job/create`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(job),
-  })
-  if (!res.ok) throw new Error('Failed to create job')
-  return res.json()
+  });
+  if (!res.ok) throw new Error("Failed to create job");
+  return res.json();
 }
 
-export async function updateJob(id: string, job: CreateJobRequest): Promise<Job> {
+export async function updateJob(
+  id: string,
+  job: CreateJobRequest,
+): Promise<Job> {
   const res = await fetch(`${API_URL}/job/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(job),
-  })
-  if (!res.ok) throw new Error('Failed to update job')
-  return res.json()
+  });
+  if (!res.ok) throw new Error("Failed to update job");
+  return res.json();
 }
 
 export async function deleteJob(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/job/${id}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('Failed to delete job')
+  const res = await fetch(`${API_URL}/job/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete job");
+}
+
+export async function runJob(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/job/${id}/run`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to run job");
+}
+
+export async function stopJob(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/job/${id}/stop`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to stop job");
+}
+
+export async function getExecutionsPage(
+  page = 1,
+  pageSize = 10,
+): Promise<PaginatedExecutions> {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  const res = await fetch(`${API_URL}/execution/all?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch executions");
+  return res.json();
 }
 
 export async function getExecutions(): Promise<Execution[]> {
-  const res = await fetch(`${API_URL}/execution/all`)
-  if (!res.ok) throw new Error('Failed to fetch executions')
-  return res.json()
+  const data = await getExecutionsPage(1, 10);
+  return data.items;
 }

@@ -33,7 +33,9 @@ func TestUserService_Create_Success(t *testing.T) {
 
 	mockRepo := new(MockRepository)
 
-	mockRepo.On("Create", ctx, job).Return(job, nil)
+	mockRepo.On("Create", ctx, mock.MatchedBy(func(j Job) bool {
+		return j.ID == job.ID && j.NextRunAt.After(time.Now())
+	})).Return(job, nil)
 
 	executionRepo := new(execution.MockRepository)
 
@@ -96,17 +98,17 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 
 	mockRepo := new(MockRepository)
 
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(j Job) bool {
+	mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(j Job) bool {
 		return j.ID == job.ID && j.NextRunAt.After(time.Now())
 	})).Return(job, nil)
 
 	executionRepo := new(execution.MockRepository)
 
-	executionRepo.On("Save", ctx, mock.MatchedBy(func(e execution.Execution) bool {
-		return e.JobID == job.ID && e.Status == execution.PENDING
+	executionRepo.On("Save", mock.Anything, mock.MatchedBy(func(e execution.Execution) bool {
+		return e.JobID == job.ID && e.Status == execution.RUNNING
 	})).Return(nil)
 
-	executionRepo.On("Update", ctx, mock.MatchedBy(func(e execution.Execution) bool {
+	executionRepo.On("Update", mock.Anything, mock.MatchedBy(func(e execution.Execution) bool {
 		return e.JobID == job.ID && e.Status == execution.SUCCESS
 	})).Return(nil)
 
@@ -116,7 +118,7 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 		client:        *mockServer.Client(),
 	}
 
-	service.ExecuteJob(ctx, job)
+	service.ExecuteJob(ctx, job, true)
 
 	mockRepo.AssertExpectations(t)
 	executionRepo.AssertExpectations(t)
@@ -155,7 +157,8 @@ func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
 		decrypted, err := manager.Decrypt(authorization)
 		return err == nil &&
 			decrypted == "Bearer raw-token" &&
-			j.Headers["Content-Type"] == "application/json"
+			j.Headers["Content-Type"] == "application/json" &&
+			j.NextRunAt.After(time.Now())
 	})).Return(Job{
 		ID:       job.ID,
 		Name:     job.Name,
