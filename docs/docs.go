@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/execution/all": {
+        "/api/execution/all": {
             "get": {
                 "description": "Get a list of all executions",
                 "produces": [
@@ -47,7 +47,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/job/all": {
+        "/api/job/all": {
             "get": {
                 "description": "Find all created jobs",
                 "produces": [
@@ -73,7 +73,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/job/create": {
+        "/api/job/create": {
             "post": {
                 "description": "Creates a new job.",
                 "consumes": [
@@ -116,7 +116,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/jobs/{jobID}": {
+        "/api/jobs/{jobID}": {
             "put": {
                 "description": "Update a job by its ID",
                 "produces": [
@@ -192,13 +192,77 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/jobs/{jobID}/run": {
+            "post": {
+                "description": "Immediately run a job by its ID",
+                "summary": "Run a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "jobID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/job.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/job.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/jobs/{jobID}/stop": {
+            "post": {
+                "description": "Stop a running job by its ID",
+                "summary": "Stop a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "jobID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/job.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/job.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
         "execution.Execution": {
             "type": "object",
             "properties": {
-                "finished": {
+                "finishedAt": {
                     "type": "string"
                 },
                 "id": {
@@ -207,7 +271,7 @@ const docTemplate = `{
                 "jobID": {
                     "type": "string"
                 },
-                "started": {
+                "startedAt": {
                     "type": "string"
                 },
                 "status": {
@@ -218,14 +282,16 @@ const docTemplate = `{
         "execution.ExecutionStatus": {
             "type": "string",
             "enum": [
-                "pending",
+                "running",
                 "success",
-                "failed"
+                "failed",
+                "stopped"
             ],
             "x-enum-varnames": [
-                "PENDING",
+                "RUNNING",
                 "SUCCESS",
-                "FAILED"
+                "FAILED",
+                "STOPPED"
             ]
         },
         "job.CreateJobRequest": {

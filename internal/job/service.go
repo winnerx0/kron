@@ -44,11 +44,12 @@ func NewJobService(repo Repository, executionRepo execution.Repository, managers
 	}
 }
 
-func (s *Service) RunJobs(ctx context.Context) {
+func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
 
 	fmt.Println("Starting")
 
 	ticker := time.NewTicker(time.Second * 30)
+
 
 	for {
 		select {
@@ -61,7 +62,9 @@ func (s *Service) RunJobs(ctx context.Context) {
 			}
 
 			for _, job := range jobs {
-				go s.ExecuteJob(ctx, job, true)
+				jobsCh <- job
+
+				// go s.ExecuteJob(ctx, job, true)
 			}
 		}
 	}
@@ -161,9 +164,10 @@ func (s *Service) StopJob(id string) bool {
 }
 
 func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool) {
+
 	s.ensureActiveExecutionTracking()
 
-	executionCtx, cancel := context.WithCancel(ctx)
+	executionCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	if advanceSchedule {
@@ -179,6 +183,7 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 
 	s.activeMu.Lock()
 	if existingRun, ok := s.activeRuns[job.ID]; ok {
+		log.Println("Cancelling active run")
 		existingRun.cancel()
 	}
 	s.activeRuns[job.ID] = activeRun{executionID: newExecution.ID, cancel: cancel}
@@ -204,6 +209,13 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
 			log.Println("Error updating execution", err)
 		}
+	}
+
+	select {
+		case <-executionCtx.Done():
+			finish(execution.STOPPED)
+			return
+		default:
 	}
 
 	req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))

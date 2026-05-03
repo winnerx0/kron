@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -30,7 +31,7 @@ func NewJobHandler(service job.Service) *JobHandler {
 // @Success 200 {object} job.CreateJobResponse "Success"
 // @Failure 400 {object} job.ErrorResponse "Invalid request"
 // @Failure 500 {object} job.ErrorResponse "Internal server error"
-// @Router /job/create [post]
+// @Router /api/job/create [post]
 func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var createJobRequest job.CreateJobRequest
 
@@ -98,7 +99,7 @@ func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Success 204
 // @Failure 400 {object} job.ErrorResponse
 // @Failure 500 {object} job.ErrorResponse
-// @Router /jobs/{jobID} [delete]
+// @Router /api/job/{jobID} [delete]
 func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 
@@ -125,7 +126,7 @@ func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 // @Success 202
 // @Failure 400 {object} job.ErrorResponse
 // @Failure 500 {object} job.ErrorResponse
-// @Router /jobs/{jobID}/run [post]
+// @Router /api/job/{jobID}/run [post]
 func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 
@@ -136,7 +137,7 @@ func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.RunJob(r.Context(), jobID); err != nil {
+	if err := h.service.RunJob(context.Background(), jobID); err != nil {
 		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(500)
 		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
@@ -152,7 +153,7 @@ func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
 // @Success 202
 // @Failure 400 {object} job.ErrorResponse
 // @Failure 404 {object} job.ErrorResponse
-// @Router /jobs/{jobID}/stop [post]
+// @Router /api/job/{jobID}/stop [post]
 func (h *JobHandler) StopJob(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 
@@ -181,7 +182,7 @@ func (h *JobHandler) StopJob(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} job.UpdateJobResponse
 // @Failure 400 {object} job.ErrorResponse
 // @Failure 500 {object} job.ErrorResponse
-// @Router /jobs/{jobID} [put]
+// @Router /api/job/{jobID} [put]
 func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "jobID")
 
@@ -237,7 +238,7 @@ func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Success 200 {array} job.JobResponse
 // @Failure 500 {object} job.ErrorResponse
-// @Router /job/all [get]
+// @Router /api/job/all [get]
 func (h *JobHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	jobs, err := h.service.FindAll(r.Context())
 	if err != nil {

@@ -15,7 +15,7 @@ func TestExecutionService_Create_Success(t *testing.T){
 	execution := Execution{
 		ID:     uuid.NewString(),
 		JobID:  uuid.NewString(),
-		Status: PENDING,
+		Status: RUNNING,
 		Started: time.Now(),
 		Finished: time.Now().Add(1 * time.Minute),
 	}

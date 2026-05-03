@@ -24,7 +24,7 @@ func NewExecutionHandler(service execution.Service) *ExecutionHandler {
 // @Produce json
 // @Success 200 {array} execution.Execution
 // @Failure 500 {object} map[string]string
-// @Router /execution/all [get]
+// @Router /api/execution/all [get]
 func (h *ExecutionHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
 	pageSize := parsePositiveInt(r.URL.Query().Get("pageSize"), 10)

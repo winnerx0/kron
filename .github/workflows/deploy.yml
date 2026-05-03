@@ -74,9 +74,9 @@ jobs:
             fi
 
             cd "$DEPLOY_DIR"
-            docker compose down --remove-orphans
-            docker compose build --no-cache
-            docker compose up -d
+            docker compose -f docker-compose.prod.yml down --remove-orphans
+            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml up -d
             sleep 5
-            docker compose ps
-            docker compose logs --tail=20
+            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml logs --tail=20

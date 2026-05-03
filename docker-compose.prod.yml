@@ -9,6 +9,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
       - nginx_logs:/var/log/nginx
     depends_on:
       - backend
@@ -27,7 +29,7 @@ services:
       - ./web:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:80/api
+      - VITE_API_URL=https://kron.winnerx0.dev/api
     networks:
       - backend
   backend:
@@ -61,11 +63,20 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kron"]
       interval: 10s
       timeout: 5s
       retries: 5
-
+  certbot:
+    container_name: kron_certbot
+    image: certbot/certbot:latest
+    entrypoint: /bin/sh
+    command: -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
+    volumes:
+      - nginx_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - frontend
 networks:
   frontend:
   backend:
@@ -73,3 +84,6 @@ networks:
 volumes:
   kron_db:
   nginx_logs:
+  nginx_certs:
+    external: true
+  certbot_www:

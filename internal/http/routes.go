@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -46,7 +47,23 @@ func (a *App) Start() error {
 
 	jobService := job.NewJobService(jobRepo, executionRepo, secretManager)
 
-	go jobService.RunJobs(context.Background())
+	jobsCh := make(chan job.Job, 10)
+
+	workerCount := 5
+
+	func(jobs <-chan job.Job) {
+		for range workerCount {
+			go func() {
+				log.Println("Worker started and waiting for jobs")
+				for job := range jobs {
+					jobService.ExecuteJob(context.Background(), job, true)
+				}
+
+			}()
+		}
+	}(jobsCh)
+
+	go jobService.RunJobs(context.Background(), jobsCh)
 
 	jobHandler := NewJobHandler(jobService)
 

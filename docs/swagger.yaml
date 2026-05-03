@@ -2,27 +2,29 @@ basePath: /
 definitions:
   execution.Execution:
     properties:
-      finished:
+      finishedAt:
         type: string
       id:
         type: string
       jobID:
         type: string
-      started:
+      startedAt:
         type: string
       status:
         $ref: '#/definitions/execution.ExecutionStatus'
     type: object
   execution.ExecutionStatus:
     enum:
-    - pending
+    - running
     - success
     - failed
+    - stopped
     type: string
     x-enum-varnames:
-    - PENDING
+    - RUNNING
     - SUCCESS
     - FAILED
+    - STOPPED
   job.CreateJobRequest:
     properties:
       body:
@@ -143,7 +145,7 @@ info:
   title: Kron API
   version: "1.0"
 paths:
-  /execution/all:
+  /api/execution/all:
     get:
       description: Get a list of all executions
       produces:
@@ -164,7 +166,7 @@ paths:
       summary: Find all executions
       tags:
       - executions
-  /job/all:
+  /api/job/all:
     get:
       description: Find all created jobs
       produces:
@@ -181,7 +183,7 @@ paths:
           schema:
             $ref: '#/definitions/job.ErrorResponse'
       summary: Find all jobs
-  /job/create:
+  /api/job/create:
     post:
       consumes:
       - application/json
@@ -209,7 +211,7 @@ paths:
           schema:
             $ref: '#/definitions/job.ErrorResponse'
       summary: Create a job
-  /jobs/{jobID}:
+  /api/jobs/{jobID}:
     delete:
       description: Delete a job by its ID
       parameters:
@@ -260,4 +262,46 @@ paths:
           schema:
             $ref: '#/definitions/job.ErrorResponse'
       summary: Update a job
+  /api/jobs/{jobID}/run:
+    post:
+      description: Immediately run a job by its ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: jobID
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Run a job
+  /api/jobs/{jobID}/stop:
+    post:
+      description: Stop a running job by its ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: jobID
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/job.ErrorResponse'
+      summary: Stop a job
 swagger: "2.0"
