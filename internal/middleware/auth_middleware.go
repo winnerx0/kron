@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ func (m *AuthMiddleware) Use(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+			response.WriteError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
@@ -48,21 +49,27 @@ func (m *AuthMiddleware) Use(next http.Handler) http.Handler {
 		})
 
 		if err != nil {
-			response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+			if errors.Is(err, jwt.ErrSignatureInvalid) {
+				response.WriteError(w, http.StatusUnauthorized, "Invalid token")
+			} else if errors.Is(err, jwt.ErrTokenExpired) {
+				response.WriteError(w, http.StatusUnauthorized, "Token expired")
+			} else {
+				response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+			}
 			return
 		}
 
 		subject, err := jwtToken.Claims.GetSubject()
 
 		if err != nil {
-			response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+			response.WriteError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
 		user, err := m.userRepo.FindById(r.Context(), subject)
 
 		if user == nil || err != nil {
-			response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+			response.WriteError(w, http.StatusNotFound, "User not found")
 			return
 		}
 
