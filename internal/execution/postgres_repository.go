@@ -10,7 +10,7 @@ type PostgresRepository struct {
 	db *gorm.DB
 }
 
-func NewPostgresRepository(db *gorm.DB) *PostgresRepository {
+func NewPostgresRepository(db *gorm.DB) Repository {
 	return &PostgresRepository{db: db}
 }
 
@@ -33,6 +33,8 @@ func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int)
 	}
 
 	err := r.db.WithContext(ctx).
+		InnerJoins("JOIN jobs ON executions.job_id = jobs.id").
+		Where("jobs.user_id = ?", ctx.Value("userId").(string)).
 		Order("started DESC").
 		Limit(limit).
 		Offset(offset).
