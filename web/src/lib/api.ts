@@ -53,6 +53,14 @@ export interface CreateJobRequest {
   body?: string;
 }
 
+export interface CurrentUser {
+  id: string;
+  name: string;
+  email: string;
+  profile_picture: string;
+  joined_at: string;
+}
+
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const data = (await res.json()) as Partial<ErrorResponse>;
@@ -99,6 +107,12 @@ async function expectOk(res: Response, fallback: string): Promise<void> {
 export async function getJobs(): Promise<Job[]> {
   const res = await authedFetch("/job/all");
   await expectOk(res, "Failed to fetch jobs");
+  return res.json();
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const res = await authedFetch("/user/me");
+  await expectOk(res, "Failed to fetch user profile");
   return res.json();
 }
 

@@ -1,5 +1,7 @@
 package user
 
+import "time"
+
 type CreateUserRequest struct {
 	Name           string `json:"name"`
 	Email          string `json:"email"`
@@ -7,8 +9,9 @@ type CreateUserRequest struct {
 }
 
 type UserResponse struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Email          string `json:"email"`
-	ProfilePicture string `json:"profile_picture"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email"`
+	ProfilePicture string    `json:"profile_picture"`
+	JoinedAt       time.Time `json:"joined_at"`
 }

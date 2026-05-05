@@ -45,6 +45,10 @@ func (a *App) Start() error {
 
 	userRepo := user.NewRepository(db)
 
+	userService := user.NewService(userRepo)
+
+	userHandler := NewUserHandler(userService)
+
 	refreshTokenRepo := refreshtoken.NewRepository(db)
 
 	jobRepo := job.NewRepository(db)
@@ -98,30 +102,36 @@ func (a *App) Start() error {
 
 	r.Route("/api", func(r chi.Router) {
 
-		r.Use(authMiddleware.Use)
-
-		r.Route("/job", func(r chi.Router) {
-
-			r.Post("/create", jobHandler.Create)
-
-			r.Put("/{jobID}", jobHandler.UpdateJob)
-
-			r.Delete("/{jobID}", jobHandler.DeleteJob)
-
-			r.Get("/all", jobHandler.FindAll)
-
-			r.Post("/{jobID}/run", jobHandler.RunJob)
-
-			r.Post("/{jobID}/stop", jobHandler.StopJob)
-		})
-
-		r.Route("/execution", func(r chi.Router) {
-
-			r.Get("/all", executionHandler.FindAll)
-		})
-
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/refresh", authHandler.Refresh)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(authMiddleware.Use)
+
+			r.Route("/job", func(r chi.Router) {
+
+				r.Post("/create", jobHandler.Create)
+
+				r.Put("/{jobID}", jobHandler.UpdateJob)
+
+				r.Delete("/{jobID}", jobHandler.DeleteJob)
+
+				r.Get("/all", jobHandler.FindAll)
+
+				r.Post("/{jobID}/run", jobHandler.RunJob)
+
+				r.Post("/{jobID}/stop", jobHandler.StopJob)
+			})
+
+			r.Route("/execution", func(r chi.Router) {
+
+				r.Get("/all", executionHandler.FindAll)
+			})
+
+			r.Route("/user", func(r chi.Router) {
+				r.Get("/me", userHandler.Me)
+			})
 		})
 
 	})

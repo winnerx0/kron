@@ -116,7 +116,7 @@ func (s *Service) SaveUser(ctx context.Context, accessToken string) (*auth.Token
 		ProfilePicture: userInfo.Picture,
 	}
 
-	user, err := s.userRepo.FindByEmail(ctx, userInfo.Email)
+	user, err := s.userRepo.FindByEmail(ctx, u.Email)
 	if err != nil {
 		return nil, err
 	}
