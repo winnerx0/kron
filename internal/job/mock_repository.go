@@ -10,8 +10,8 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (mock *MockRepository) FindAll(ctx context.Context) ([]Job, error) {
-	args := mock.Called(ctx)
+func (mock *MockRepository) FindAll(ctx context.Context, userID string) ([]Job, error) {
+	args := mock.Called(ctx, userID)
 	return args.Get(0).([]Job), args.Error(1)
 }
 

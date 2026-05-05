@@ -5,8 +5,8 @@ import (
 )
 
 type Execution struct {
-	ID       string          `gorm:"primaryKey,default:uuid_generate_v4()" json:"id"`
-	JobID    string          `gorm:"job_id" json:"jobID"`
+	ID       string          `gorm:"type:uuid;primaryKey,default:uuid_generate_v7()" json:"id"`
+	JobID    string          `gorm:"type:uuid;not null" json:"jobID"`
 	Status   ExecutionStatus `gorm:"type:varchar(20);not null" json:"status"`
 	Started  time.Time       `gorm:"not null" json:"startedAt"`
 	Finished time.Time       `gorm:"not null" json:"finishedAt"`

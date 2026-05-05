@@ -9,11 +9,16 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"github.com/winnerx0/kron/internal/auth"
 	"github.com/winnerx0/kron/internal/config"
 	"github.com/winnerx0/kron/internal/database"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
+	"github.com/winnerx0/kron/internal/middleware"
+	"github.com/winnerx0/kron/internal/oauth"
+	refreshtoken "github.com/winnerx0/kron/internal/refresh_token"
 	"github.com/winnerx0/kron/internal/secret"
+	"github.com/winnerx0/kron/internal/user"
 )
 
 type App struct {
@@ -37,6 +42,10 @@ func (a *App) Start() error {
 	executionService := execution.NewExecutionService(executionRepo)
 
 	executionHandler := NewExecutionHandler(executionService)
+
+	userRepo := user.NewRepository(db)
+
+	refreshTokenRepo := refreshtoken.NewRepository(db)
 
 	jobRepo := job.NewRepository(db)
 
@@ -67,6 +76,16 @@ func (a *App) Start() error {
 
 	jobHandler := NewJobHandler(jobService)
 
+	authService := auth.NewService(&a.config, userRepo, refreshTokenRepo)
+
+	authHandler := NewAuthHandler(authService)
+
+	oauthService := oauth.NewService(&a.config, userRepo, authService)
+
+	oauthHandler := NewOauthHandler(a.config.FrontendURL, oauthService)
+
+	authMiddleware := middleware.NewAuthMiddleware(&a.config, userRepo)
+
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -78,6 +97,8 @@ func (a *App) Start() error {
 	}))
 
 	r.Route("/api", func(r chi.Router) {
+
+		r.Use(authMiddleware.Use)
 
 		r.Route("/job", func(r chi.Router) {
 
@@ -99,6 +120,17 @@ func (a *App) Start() error {
 			r.Get("/all", executionHandler.FindAll)
 		})
 
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/refresh", authHandler.Refresh)
+		})
+
+	})
+
+	r.Route("/oauth", func(r chi.Router) {
+		r.Route("/google", func(r chi.Router) {
+			r.Get("/login", oauthHandler.GoogleLogin)
+			r.Get("/callback", oauthHandler.GoogleCallback)
+		})
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)

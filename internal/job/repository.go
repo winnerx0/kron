@@ -5,7 +5,7 @@ import (
 )
 
 type Repository interface {
-	FindAll(ctx context.Context) ([]Job, error)
+	FindAll(ctx context.Context, userID string) ([]Job, error)
 
 	FindAllNextRun(ctx context.Context) ([]Job, error)
 

@@ -1,8 +1,29 @@
-import { Outlet } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { ThemeProvider } from '@/lib/theme'
 import { Sidebar } from '@/components/sidebar'
+import { getAccessToken } from '@/lib/auth'
+
+const PUBLIC_PATHS = new Set(['/login', '/callback'])
 
 export function RootLayout() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isPublic = PUBLIC_PATHS.has(location.pathname)
+
+  useEffect(() => {
+    if (isPublic) return
+    if (!getAccessToken()) navigate({ to: '/login', replace: true })
+  }, [isPublic, location.pathname, navigate])
+
+  if (isPublic) {
+    return (
+      <ThemeProvider>
+        <Outlet />
+      </ThemeProvider>
+    )
+  }
+
   return (
     <ThemeProvider>
       <div className="flex h-screen overflow-hidden bg-background">

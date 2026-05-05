@@ -44,7 +44,7 @@ func TestUserService_Create_Success(t *testing.T) {
 		executionRepo: executionRepo,
 	}
 
-	result, err := service.Create(ctx, job)
+	result, err := service.Create(ctx, uuid.NewString(), job)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -173,7 +173,7 @@ func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
 
 	service := NewJobService(mockRepo, new(execution.MockRepository), manager)
 
-	result, err := service.Create(ctx, job)
+	result, err := service.Create(ctx, uuid.NewString(), job)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -201,8 +201,10 @@ func TestJobService_Update_PreservesMaskedSensitiveHeaders(t *testing.T) {
 	}
 
 	jobID := uuid.NewString()
+	userID := uuid.NewString()
 	existingJob := Job{
-		ID: jobID,
+		ID:     jobID,
+		UserID: userID,
 		Headers: map[string]any{
 			"Authorization": encrypted,
 		},
@@ -235,7 +237,7 @@ func TestJobService_Update_PreservesMaskedSensitiveHeaders(t *testing.T) {
 
 	service := NewJobService(mockRepo, new(execution.MockRepository), manager)
 
-	result, err := service.Update(ctx, updateJob)
+	result, err := service.Update(ctx, userID, updateJob)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

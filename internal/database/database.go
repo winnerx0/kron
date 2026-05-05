@@ -3,8 +3,11 @@ package database
 import (
 	"fmt"
 	"time"
+
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
+	refreshtoken "github.com/winnerx0/kron/internal/refresh_token"
+	"github.com/winnerx0/kron/internal/user"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -55,8 +58,10 @@ func (d *Database) Start() *gorm.DB {
 	if err != nil {
 		panic(err)
 	}
+
+	db.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 	
-	err = db.AutoMigrate(&job.Job{}, &execution.Execution{})
+	err = db.AutoMigrate(&job.Job{}, &execution.Execution{}, &user.User{}, &refreshtoken.RefreshToken{})
 	
 	if err != nil {
 		panic(err)

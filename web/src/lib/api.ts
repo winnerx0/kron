@@ -1,4 +1,18 @@
+import { getAccessToken, redirectToLogin, refreshTokens } from "./auth";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 
 export interface Job {
   id: string;
@@ -39,19 +53,62 @@ export interface CreateJobRequest {
   body?: string;
 }
 
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = (await res.json()) as Partial<ErrorResponse>;
+    if (data && typeof data.error === "string") return data.error;
+  } catch {
+    // body wasn't JSON
+  }
+  return fallback;
+}
+
+async function authedFetch(
+  path: string,
+  init: RequestInit = {},
+  retry = true,
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = getAccessToken();
+  if (!token) {
+    redirectToLogin();
+    throw new ApiError(401, "Unauthorized");
+  }
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  if (res.status === 401 && retry) {
+    const refreshed = await refreshTokens();
+    if (!refreshed) {
+      redirectToLogin();
+      throw new ApiError(401, "Unauthorized");
+    }
+    return authedFetch(path, init, false);
+  }
+
+  return res;
+}
+
+async function expectOk(res: Response, fallback: string): Promise<void> {
+  if (!res.ok) {
+    throw new ApiError(res.status, await readError(res, fallback));
+  }
+}
+
 export async function getJobs(): Promise<Job[]> {
-  const res = await fetch(`${API_URL}/job/all`);
-  if (!res.ok) throw new Error("Failed to fetch jobs");
+  const res = await authedFetch("/job/all");
+  await expectOk(res, "Failed to fetch jobs");
   return res.json();
 }
 
 export async function createJob(job: CreateJobRequest): Promise<Job> {
-  const res = await fetch(`${API_URL}/job/create`, {
+  const res = await authedFetch("/job/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(job),
   });
-  if (!res.ok) throw new Error("Failed to create job");
+  await expectOk(res, "Failed to create job");
   return res.json();
 }
 
@@ -59,28 +116,28 @@ export async function updateJob(
   id: string,
   job: CreateJobRequest,
 ): Promise<Job> {
-  const res = await fetch(`${API_URL}/job/${id}`, {
+  const res = await authedFetch(`/job/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(job),
   });
-  if (!res.ok) throw new Error("Failed to update job");
+  await expectOk(res, "Failed to update job");
   return res.json();
 }
 
 export async function deleteJob(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/job/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete job");
+  const res = await authedFetch(`/job/${id}`, { method: "DELETE" });
+  await expectOk(res, "Failed to delete job");
 }
 
 export async function runJob(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/job/${id}/run`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to run job");
+  const res = await authedFetch(`/job/${id}/run`, { method: "POST" });
+  await expectOk(res, "Failed to run job");
 }
 
 export async function stopJob(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/job/${id}/stop`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to stop job");
+  const res = await authedFetch(`/job/${id}/stop`, { method: "POST" });
+  await expectOk(res, "Failed to stop job");
 }
 
 export async function getExecutionsPage(
@@ -91,8 +148,8 @@ export async function getExecutionsPage(
     page: String(page),
     pageSize: String(pageSize),
   });
-  const res = await fetch(`${API_URL}/execution/all?${params.toString()}`);
-  if (!res.ok) throw new Error("Failed to fetch executions");
+  const res = await authedFetch(`/execution/all?${params.toString()}`);
+  await expectOk(res, "Failed to fetch executions");
   return res.json();
 }
 

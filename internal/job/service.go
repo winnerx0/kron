@@ -3,6 +3,7 @@ package job
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/secret"
 )
+
+var ErrForbidden = errors.New("forbidden")
 
 type Service struct {
 	repo          Repository
@@ -70,7 +73,9 @@ func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
 	}
 }
 
-func (s *Service) Create(ctx context.Context, job Job) (Job, error) {
+func (s *Service) Create(ctx context.Context, userID string, job Job) (Job, error) {
+	job.UserID = userID
+
 	if err := setNextRun(&job); err != nil {
 		return Job{}, err
 	}
@@ -88,11 +93,17 @@ func (s *Service) Create(ctx context.Context, job Job) (Job, error) {
 	return s.decryptJobSecrets(createdJob)
 }
 
-func (s *Service) Update(ctx context.Context, job Job) (Job, error) {
+func (s *Service) Update(ctx context.Context, userID string, job Job) (Job, error) {
 	existingJob, err := s.repo.FindByID(ctx, job.ID)
 	if err != nil {
 		return Job{}, err
 	}
+
+	if existingJob.UserID != userID {
+		return Job{}, ErrForbidden
+	}
+
+	job.UserID = existingJob.UserID
 
 	if err := setNextRun(&job); err != nil {
 		return Job{}, err
@@ -111,12 +122,21 @@ func (s *Service) Update(ctx context.Context, job Job) (Job, error) {
 	return s.decryptJobSecrets(updatedJob)
 }
 
-func (s *Service) Delete(ctx context.Context, id string) error {
+func (s *Service) Delete(ctx context.Context, userID string, id string) error {
+	existingJob, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if existingJob.UserID != userID {
+		return ErrForbidden
+	}
+
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *Service) FindAll(ctx context.Context) ([]JobResponse, error) {
-	jobs, err := s.repo.FindAll(ctx)
+func (s *Service) FindAll(ctx context.Context, userID string) ([]JobResponse, error) {
+	jobs, err := s.repo.FindAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,17 +158,30 @@ func (s *Service) FindAll(ctx context.Context) ([]JobResponse, error) {
 	return jobResponses, nil
 }
 
-func (s *Service) RunJob(ctx context.Context, id string) error {
+func (s *Service) RunJob(ctx context.Context, userID string, id string) error {
 	job, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	go s.ExecuteJob(ctx, job, false)
+	if job.UserID != userID {
+		return ErrForbidden
+	}
+
+	go s.ExecuteJob(context.Background(), job, false)
 	return nil
 }
 
-func (s *Service) StopJob(id string) bool {
+func (s *Service) StopJob(ctx context.Context, userID string, id string) (bool, error) {
+	job, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	if job.UserID != userID {
+		return false, ErrForbidden
+	}
+
 	s.ensureActiveExecutionTracking()
 
 	s.activeMu.Lock()
@@ -156,11 +189,11 @@ func (s *Service) StopJob(id string) bool {
 	s.activeMu.Unlock()
 
 	if !ok {
-		return false
+		return false, nil
 	}
 
 	run.cancel()
-	return true
+	return true, nil
 }
 
 func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool) {

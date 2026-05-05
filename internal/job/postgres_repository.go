@@ -15,8 +15,8 @@ func NewRepository(db *gorm.DB) *PostgresRepository {
 
 }
 
-func (r *PostgresRepository) FindAll(ctx context.Context) ([]Job, error) {
-	jobs, err := gorm.G[Job](r.db).Find(ctx)
+func (r *PostgresRepository) FindAll(ctx context.Context, userID string) ([]Job, error) {
+	jobs, err := gorm.G[Job](r.db).Where("user_id = ?", userID).Find(ctx)
 
 	if err != nil {
 		return []Job{}, err

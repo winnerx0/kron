@@ -1,8 +1,8 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/winnerx0/kron/internal/job"
+	"github.com/winnerx0/kron/internal/response"
 	"github.com/winnerx0/kron/internal/validator"
 )
 
@@ -23,42 +24,56 @@ func NewJobHandler(service job.Service) *JobHandler {
 	return &JobHandler{service: service}
 }
 
+func userIDFromContext(r *http.Request) (string, bool) {
+	value := r.Context().Value("userId")
+	id, ok := value.(string)
+	return id, ok
+}
+
+func writeJobError(w http.ResponseWriter, err error) {
+	if errors.Is(err, job.ErrForbidden) {
+		response.WriteError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+	response.WriteError(w, http.StatusInternalServerError, err.Error())
+}
+
 // @Summary Create a job
 // @Description Creates a new job.
 // @Accept json
 // @Produce json
 // @Param job body job.CreateJobRequest true "Job"
 // @Success 200 {object} job.CreateJobResponse "Success"
-// @Failure 400 {object} job.ErrorResponse "Invalid request"
-// @Failure 500 {object} job.ErrorResponse "Internal server error"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /api/job/create [post]
 func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	var createJobRequest job.CreateJobRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&createJobRequest); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := validate.Struct(createJobRequest); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: validator.FirstError(err)})
+		response.WriteError(w, http.StatusBadRequest, validator.FirstError(err))
 		return
 	}
 
 	_, err := cron.ParseStandard(createJobRequest.Schedule)
 
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Invalid cron expression"})
+		response.WriteError(w, http.StatusBadRequest, "Invalid cron expression")
 		return
 	}
 
-	newJob, err := h.service.Create(r.Context(), job.Job{
+	newJob, err := h.service.Create(r.Context(), userID, job.Job{
 		ID:          uuid.NewString(),
 		Name:        createJobRequest.Name,
 		Description: createJobRequest.Description,
@@ -70,10 +85,8 @@ func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		log.Println("Error parsing cron expression", err)
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		log.Println("Error creating job", err)
+		writeJobError(w, err)
 		return
 	}
 
@@ -97,23 +110,26 @@ func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Description Delete a job by its ID
 // @Param jobID path string true "Job ID"
 // @Success 204
-// @Failure 400 {object} job.ErrorResponse
-// @Failure 500 {object} job.ErrorResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
 // @Router /api/job/{jobID} [delete]
 func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-
-	if jobID == "" {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	if err := h.service.Delete(r.Context(), jobID); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		response.WriteError(w, http.StatusBadRequest, "Missing job ID")
+		return
+	}
+
+	if err := h.service.Delete(r.Context(), userID, jobID); err != nil {
+		writeJobError(w, err)
 		return
 	}
 
@@ -124,23 +140,26 @@ func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 // @Description Immediately run a job by its ID
 // @Param jobID path string true "Job ID"
 // @Success 202
-// @Failure 400 {object} job.ErrorResponse
-// @Failure 500 {object} job.ErrorResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
 // @Router /api/job/{jobID}/run [post]
 func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-
-	if jobID == "" {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	if err := h.service.RunJob(context.Background(), jobID); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		response.WriteError(w, http.StatusBadRequest, "Missing job ID")
+		return
+	}
+
+	if err := h.service.RunJob(r.Context(), userID, jobID); err != nil {
+		writeJobError(w, err)
 		return
 	}
 
@@ -151,23 +170,32 @@ func (h *JobHandler) RunJob(w http.ResponseWriter, r *http.Request) {
 // @Description Stop a running job by its ID
 // @Param jobID path string true "Job ID"
 // @Success 202
-// @Failure 400 {object} job.ErrorResponse
-// @Failure 404 {object} job.ErrorResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
 // @Router /api/job/{jobID}/stop [post]
 func (h *JobHandler) StopJob(w http.ResponseWriter, r *http.Request) {
-	jobID := chi.URLParam(r, "jobID")
-
-	if jobID == "" {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	if !h.service.StopJob(jobID) {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(404)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Job is not running"})
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		response.WriteError(w, http.StatusBadRequest, "Missing job ID")
+		return
+	}
+
+	stopped, err := h.service.StopJob(r.Context(), userID, jobID)
+	if err != nil {
+		writeJobError(w, err)
+		return
+	}
+
+	if !stopped {
+		response.WriteError(w, http.StatusNotFound, "Job is not running")
 		return
 	}
 
@@ -180,28 +208,31 @@ func (h *JobHandler) StopJob(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param job body job.UpdateJobRequest true "Job"
 // @Success 200 {object} job.UpdateJobResponse
-// @Failure 400 {object} job.ErrorResponse
-// @Failure 500 {object} job.ErrorResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
 // @Router /api/job/{jobID} [put]
 func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	jobID := chi.URLParam(r, "jobID")
 
 	if jobID == "" {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: "Missing job ID"})
+		response.WriteError(w, http.StatusBadRequest, "Missing job ID")
 		return
 	}
 
 	var updateJobRequest job.UpdateJobRequest
 	if err := json.NewDecoder(r.Body).Decode(&updateJobRequest); err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	updatedJob, err := h.service.Update(r.Context(), job.Job{
+	updatedJob, err := h.service.Update(r.Context(), userID, job.Job{
 		ID:          jobID,
 		Name:        updateJobRequest.Name,
 		Description: updateJobRequest.Description,
@@ -213,9 +244,7 @@ func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		writeJobError(w, err)
 		return
 	}
 
@@ -237,14 +266,18 @@ func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
 // @Description Find all created jobs
 // @Produce json
 // @Success 200 {array} job.JobResponse
-// @Failure 500 {object} job.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
 // @Router /api/job/all [get]
 func (h *JobHandler) FindAll(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.service.FindAll(r.Context())
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	jobs, err := h.service.FindAll(r.Context(), userID)
 	if err != nil {
-		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(500)
-		json.NewEncoder(w).Encode(job.ErrorResponse{Error: err.Error()})
+		response.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
