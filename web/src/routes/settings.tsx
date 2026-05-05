@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, LogOut, Moon, Sun, UserRound } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { LogOut, UserRound } from 'lucide-react'
 import { clearTokens } from '@/lib/auth'
 import { CurrentUser, getCurrentUser } from '@/lib/api'
-import { useTheme } from '@/lib/theme'
 
 function Section({
   icon: Icon,
