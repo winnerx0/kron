@@ -7,7 +7,6 @@ import {
   Play,
   Square,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { getJobs, deleteJob, runJob, stopJob, type Job } from "@/lib/api";
 import { CreateJobDialog } from "@/components/create-job-dialog";
 
@@ -115,21 +114,20 @@ export function JobsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Jobs</h1>
+          <h1 className="font-display text-[36px] leading-tight">Jobs</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Manage your scheduled HTTP tasks
           </p>
         </div>
-        <Button
-          size="sm"
-          className="gap-2 h-8 text-xs"
+        <button
+          className="inline-flex items-center gap-2 h-9 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.99]"
           onClick={() => {
             setSelected(null);
             setShowDialog(true);
           }}
         >
           <Plus className="w-3.5 h-3.5" /> New Job
-        </Button>
+        </button>
       </div>
 
       {error && (
@@ -138,14 +136,14 @@ export function JobsPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
               {["Name", "Method", "Endpoint", "Schedule", ""].map((h) => (
                 <th
                   key={h}
-                  className={`px-5 py-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground ${h === "" ? "text-right" : "text-left"}`}
+                  className={`px-5 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground ${h === "" ? "text-right" : "text-left"}`}
                 >
                   {h}
                 </th>
@@ -167,16 +165,15 @@ export function JobsPage() {
                     <p className="text-sm text-muted-foreground mb-5">
                       Create your first scheduled job to get started
                     </p>
-                    <Button
-                      size="sm"
-                      className="gap-2 h-8 text-xs"
+                    <button
+                      className="inline-flex items-center gap-2 h-9 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 active:scale-[0.99]"
                       onClick={() => {
                         setSelected(null);
                         setShowDialog(true);
                       }}
                     >
                       <Plus className="w-3.5 h-3.5" /> Create job
-                    </Button>
+                    </button>
                   </div>
                 </td>
               </tr>

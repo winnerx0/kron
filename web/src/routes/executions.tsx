@@ -129,7 +129,7 @@ export function ExecutionsPage() {
     <div className="space-y-6 pb-24 animate-fade-in">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Executions</h1>
+          <h1 className="font-display text-[36px] leading-tight">Executions</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Real-time job execution history
           </p>
@@ -171,25 +171,15 @@ export function ExecutionsPage() {
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Status
-              </th>
-              <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Job ID
-              </th>
-              <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Started
-              </th>
-              <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Completed
-              </th>
-              <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Duration
-              </th>
+              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Status</th>
+              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Job ID</th>
+              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Started</th>
+              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Completed</th>
+              <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Duration</th>
             </tr>
           </thead>
           <tbody>

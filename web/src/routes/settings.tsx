@@ -23,7 +23,7 @@ function Section({
           <Icon className="h-4 w-4 text-muted-foreground" />
         </span>
         <div>
-          <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">{title}</h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
         </div>
       </div>
@@ -86,16 +86,19 @@ export function SettingsPage() {
     <div className="mx-auto max-w-4xl animate-fade-in">
       <header className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <h1 className="font-display text-[36px] leading-tight">Settings</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage account, display, and runtime preferences.</p>
         </div>
-        <Button variant="outline" size="sm" className="h-9 gap-2 self-start sm:self-auto" onClick={signOut}>
+        <button
+          className="inline-flex items-center gap-2 h-9 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted self-start sm:self-auto"
+          onClick={signOut}
+        >
           <LogOut className="h-4 w-4" />
           Sign out
-        </Button>
+        </button>
       </header>
 
-      <div className="rounded-lg border border-border bg-card px-5 sm:px-6">
+      <div className="rounded-xl border border-border bg-card px-5 sm:px-6">
         <Section icon={UserRound} title="Account" description="Profile details from your workspace identity.">
           {loadingUser ? (
             <div className="h-28 animate-pulse rounded-md border border-border bg-muted/30" />
@@ -109,7 +112,7 @@ export function SettingsPage() {
                 <img
                   src={user.profile_picture}
                   alt=""
-                  className="h-14 w-14 rounded-md border border-border object-cover"
+                  className="h-14 w-14 rounded-full border border-border object-cover"
                   referrerPolicy="no-referrer"
                 />
                 <div className="min-w-0">
@@ -122,29 +125,6 @@ export function SettingsPage() {
               </div>
             </div>
           ) : null}
-        </Section>
-
-        <Section icon={Sun} title="Appearance" description="Choose the dashboard color mode.">
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant={theme === 'light' ? 'default' : 'outline'}
-              className="h-11 justify-start gap-3"
-              onClick={() => theme === 'dark' && toggle()}
-            >
-              <Sun className="h-4 w-4" />
-              Light
-              {theme === 'light' && <Check className="ml-auto h-4 w-4" />}
-            </Button>
-            <Button
-              variant={theme === 'dark' ? 'default' : 'outline'}
-              className="h-11 justify-start gap-3"
-              onClick={() => theme === 'light' && toggle()}
-            >
-              <Moon className="h-4 w-4" />
-              Dark
-              {theme === 'dark' && <Check className="ml-auto h-4 w-4" />}
-            </Button>
-          </div>
         </Section>
 
       </div>

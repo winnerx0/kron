@@ -1,105 +1,69 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Moon, Sun } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { Button } from "@/components/ui/button";
 import { getAccessToken, LOGIN_URL } from "@/lib/auth";
-import { useTheme } from "@/lib/theme";
+import { KronMark } from "@/components/kron-mark";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { theme, toggle } = useTheme();
 
   useEffect(() => {
-    if (getAccessToken()) navigate({ to: "/", replace: true });
+    if (getAccessToken()) navigate({ to: "/dashboard", replace: true });
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="h-14 border-b border-border bg-card">
-        <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
-            <LogoMark />
-            <span className="text-[15px] font-semibold tracking-tight">
-              Kron
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="gap-2"
-            onClick={toggle}
-          >
-            {theme === "dark" ? (
-              <Sun className="h-3.5 w-3.5" />
-            ) : (
-              <Moon className="h-3.5 w-3.5" />
-            )}
-            {theme === "dark" ? "Light" : "Dark"}
-          </Button>
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+      {/* Concentric orbit lines, decorative */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center">
+        <div className="relative h-[820px] w-[820px] opacity-[0.08]">
+          <div className="absolute inset-0 rounded-full border border-foreground" />
+          <div className="absolute inset-12 rounded-full border border-foreground" />
+          <div className="absolute inset-28 rounded-full border border-foreground" />
+          <div className="absolute inset-48 rounded-full border border-dashed border-foreground animate-orbit" />
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto flex flex-col min-h-[calc(100vh-3.5rem)] w-full max-w-5xl items-center justify-center px-6 py-10">
-          <div className="px-6 py-4 text-center">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Welcome back
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Sign in to your account to continue
-            </p>
-          </div>
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6">
+        <div className="flex flex-col items-center text-center animate-fade-in">
+          <KronMark className="h-10 w-10 text-foreground" />
+          <span className="mt-3 text-[15px] font-semibold tracking-tight">Kron</span>
 
-          <div className="p-6">
-            <Button
-              size="lg"
-              variant="outline"
-              className="h-11 w-full justify-start gap-3 px-4 rounded-full"
-              onClick={() => {
-                window.location.href = LOGIN_URL;
-              }}
-            >
-              <span className="grid h-7 w-7 place-items-center rounded-md border border-border bg-background">
-                <FcGoogle className="h-4 w-4" />
-              </span>
-              Continue with Google
-            </Button>
-          </div>
+          <h1 className="font-display mt-10 text-[44px] leading-[1.05]">
+            Welcome <span className="italic">back</span>
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Sign in to your account to continue
+          </p>
+        </div>
+
+        <div className="mt-10 flex w-full flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = LOGIN_URL;
+            }}
+            className="group flex h-12 w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-all hover:bg-muted active:scale-[0.99]"
+          >
+            <FcGoogle className="h-[18px] w-[18px]" />
+            Continue with Google
+          </button>
+        </div>
+
+        <p className="mt-10 max-w-[280px] text-center text-[11px] leading-relaxed text-muted-foreground">
+          By continuing, you agree to Kron&rsquo;s{" "}
+          <a href="#" className="text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="text-foreground underline decoration-border underline-offset-2 hover:decoration-foreground">
+            Privacy Policy
+          </a>
+          .
+        </p>
       </main>
-    </div>
-  );
-}
 
-function LogoMark() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 20 20"
-      fill="none"
-      className="shrink-0"
-    >
-      <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
-      <line
-        x1="10"
-        y1="10"
-        x2="10"
-        y2="4.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="10"
-        y1="10"
-        x2="13.5"
-        y2="12"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <circle cx="10" cy="10" r="1" fill="currentColor" />
-    </svg>
+      {/* Bottom hairline */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border" />
+    </div>
   );
 }

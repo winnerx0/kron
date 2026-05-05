@@ -19,7 +19,7 @@ export function CallbackPage() {
       access_token: search.access,
       refresh_token: search.refresh,
     });
-    navigate({ to: "/", replace: true });
+    navigate({ to: "/dashboard", replace: true });
   }, [search.access, search.refresh, navigate]);
 
   return (

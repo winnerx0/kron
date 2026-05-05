@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/lib/theme'
 import { Sidebar } from '@/components/sidebar'
 import { getAccessToken } from '@/lib/auth'
 
-const PUBLIC_PATHS = new Set(['/login', '/callback'])
+const PUBLIC_PATHS = new Set(['/', '/login', '/callback'])
 
 export function RootLayout() {
   const location = useLocation()
