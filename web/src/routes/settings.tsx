@@ -42,7 +42,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 }
 
 export function SettingsPage() {
-  const { theme, toggle } = useTheme()
+  
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)

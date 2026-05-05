@@ -76,9 +76,6 @@ export function Sidebar() {
           }
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground px-2.5 pt-1">
-          v0.1.0
-        </p>
       </div>
     </aside>
   )
