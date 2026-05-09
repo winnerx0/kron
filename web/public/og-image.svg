@@ -1,0 +1,119 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+
+  <!-- Vertical hairline divider -->
+  <line x1="540" y1="0" x2="540" y2="630" stroke="#1A1A1A" stroke-width="1"/>
+
+  <!-- ───── LEFT: brand + headline ───── -->
+
+  <!-- Logo + wordmark -->
+  <g transform="translate(72, 72)">
+    <g>
+      <circle cx="20" cy="20" r="18" stroke="#F0F0F0" stroke-width="1.4"/>
+      <circle cx="20" cy="20" r="12" stroke="#F0F0F0" stroke-width="1" opacity="0.55"/>
+      <circle cx="20" cy="20" r="6"  stroke="#F0F0F0" stroke-width="1" opacity="0.35"/>
+      <line x1="20" y1="20" x2="20" y2="8"  stroke="#F0F0F0" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="20" y1="20" x2="28" y2="24" stroke="#F0F0F0" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="20" cy="20" r="1.8" fill="#F0F0F0"/>
+    </g>
+    <text x="50" y="28" fill="#F0F0F0" font-family="Geist, system-ui, sans-serif" font-size="20" font-weight="600" letter-spacing="-0.5">Kron</text>
+  </g>
+
+  <!-- Mono kicker -->
+  <text x="72" y="270" fill="#9A9A9A" font-family="DM Mono, monospace" font-size="13" letter-spacing="3">
+    A JOB SCHEDULER FOR HUMANS
+  </text>
+
+  <!-- Headline -->
+  <text x="72" y="360" fill="#F0F0F0" font-family="Instrument Serif, Times New Roman, serif" font-size="96" font-weight="400" letter-spacing="-2.5">
+    Time, <tspan font-style="italic">on</tspan>
+  </text>
+  <text x="72" y="450" fill="#F0F0F0" font-family="Instrument Serif, Times New Roman, serif" font-size="96" font-weight="400" letter-spacing="-2.5">
+    schedule.
+  </text>
+
+  <!-- Subtitle -->
+  <text x="72" y="510" fill="#909090" font-family="Geist, system-ui, sans-serif" font-size="18" font-weight="400">
+    Cron, retries, history — without the
+  </text>
+  <text x="72" y="535" fill="#909090" font-family="Geist, system-ui, sans-serif" font-size="18" font-weight="400">
+    cron folklore.
+  </text>
+
+  <!-- ───── RIGHT: stylized run log card ───── -->
+
+  <g transform="translate(600, 110)">
+    <!-- Card -->
+    <rect x="0" y="0" width="540" height="410" rx="14" fill="#0F0F0F" stroke="#1F1F1F" stroke-width="1"/>
+
+    <!-- Card header -->
+    <g transform="translate(28, 32)">
+      <circle cx="4" cy="-4" r="4" fill="#F0F0F0"/>
+      <text x="16" y="0" fill="#9A9A9A" font-family="DM Mono, monospace" font-size="11" letter-spacing="2.5">LIVE · RUN LOG</text>
+      <text x="484" y="0" fill="#606060" text-anchor="end" font-family="DM Mono, monospace" font-size="11" letter-spacing="2.5">UTC</text>
+    </g>
+
+    <!-- Header divider -->
+    <line x1="28" y1="50" x2="512" y2="50" stroke="#1F1F1F" stroke-width="1"/>
+
+    <!-- Log rows -->
+    <g font-family="DM Mono, monospace" font-size="14">
+      <!-- Row 1 -->
+      <g transform="translate(28, 84)">
+        <circle cx="4" cy="-4" r="3" fill="#F0F0F0"/>
+        <text x="20" y="0"  fill="#606060">00:00:00</text>
+        <text x="100" y="0" fill="#C0C0C0">0 0 * * *</text>
+        <text x="210" y="0" fill="#F0F0F0">nightly.backup</text>
+        <text x="484" y="0" fill="#7A7A7A" text-anchor="end">ok</text>
+      </g>
+      <line x1="28" y1="100" x2="512" y2="100" stroke="#1F1F1F" stroke-width="1"/>
+
+      <!-- Row 2 -->
+      <g transform="translate(28, 134)">
+        <circle cx="4" cy="-4" r="3" fill="#F0F0F0"/>
+        <text x="20" y="0"  fill="#606060">00:05:12</text>
+        <text x="100" y="0" fill="#C0C0C0">*/5 * * * *</text>
+        <text x="210" y="0" fill="#F0F0F0">metrics.flush</text>
+        <text x="484" y="0" fill="#7A7A7A" text-anchor="end">ok</text>
+      </g>
+      <line x1="28" y1="150" x2="512" y2="150" stroke="#1F1F1F" stroke-width="1"/>
+
+      <!-- Row 3 -->
+      <g transform="translate(28, 184)">
+        <circle cx="4" cy="-4" r="3" fill="#F0F0F0"/>
+        <text x="20" y="0"  fill="#606060">00:10:00</text>
+        <text x="100" y="0" fill="#C0C0C0">*/10 * * * *</text>
+        <text x="210" y="0" fill="#F0F0F0">queue.drain</text>
+        <text x="484" y="0" fill="#7A7A7A" text-anchor="end">ok</text>
+      </g>
+      <line x1="28" y1="200" x2="512" y2="200" stroke="#1F1F1F" stroke-width="1"/>
+
+      <!-- Row 4 (running) -->
+      <g transform="translate(28, 234)">
+        <circle cx="4" cy="-4" r="3" fill="#F0F0F0"/>
+        <text x="20" y="0"  fill="#606060">00:15:00</text>
+        <text x="100" y="0" fill="#C0C0C0">*/5 * * * *</text>
+        <text x="210" y="0" fill="#F0F0F0">metrics.flush</text>
+        <text x="484" y="0" fill="#F0F0F0" text-anchor="end">run</text>
+      </g>
+      <line x1="28" y1="250" x2="512" y2="250" stroke="#1F1F1F" stroke-width="1"/>
+
+      <!-- Row 5 (queued) -->
+      <g transform="translate(28, 284)">
+        <circle cx="4" cy="-4" r="3" fill="none" stroke="#606060" stroke-width="1"/>
+        <text x="20" y="0"  fill="#606060">00:30:00</text>
+        <text x="100" y="0" fill="#C0C0C0">*/30 * * * *</text>
+        <text x="210" y="0" fill="#F0F0F0">ledger.reconcile</text>
+        <text x="484" y="0" fill="#606060" text-anchor="end">queued</text>
+      </g>
+    </g>
+
+    <!-- Footer -->
+    <line x1="28" y1="346" x2="512" y2="346" stroke="#1F1F1F" stroke-width="1"/>
+    <g transform="translate(28, 376)" font-family="DM Mono, monospace" font-size="12">
+      <text x="0" y="0"   fill="#606060">5 / 124 shown</text>
+      <text x="484" y="0" fill="#9A9A9A" text-anchor="end">tail -f runs</text>
+    </g>
+  </g>
+</svg>
