@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -64,7 +63,7 @@ func (s *Service) IssueTokens(ctx context.Context, u user.User) (*TokenResult, e
 	}
 
 	if err := s.refreshTokenRepo.Save(ctx, refreshtoken.RefreshToken{
-		ID: uuid.NewString(),
+		ID:        uuid.NewString(),
 		UserID:    u.ID,
 		Token:     refreshToken,
 		ExpiresAt: time.Now().Add(RefreshTokenTTL),
@@ -81,12 +80,12 @@ func (s *Service) IssueTokens(ctx context.Context, u user.User) (*TokenResult, e
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenResult, error) {
 	stored, err := s.refreshTokenRepo.FindByToken(ctx, refreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token")
+		return nil, ErrInvalidRefreshToken
 	}
 
 	if time.Now().After(stored.ExpiresAt) {
 		_ = s.refreshTokenRepo.DeleteByToken(ctx, refreshToken)
-		return nil, fmt.Errorf("refresh token expired")
+		return nil, ErrRefreshTokenExpired
 	}
 
 	parsed, err := jwt.ParseWithClaims(refreshToken, &jwt.RegisteredClaims{}, func(t *jwt.Token) (any, error) {
@@ -96,12 +95,12 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenResul
 		return []byte(s.config.JwtRefreshTokenSecret), nil
 	})
 	if err != nil || !parsed.Valid {
-		return nil, fmt.Errorf("invalid refresh token")
+		return nil, ErrInvalidRefreshToken
 	}
 
 	u, err := s.userRepo.FindById(ctx, stored.UserID)
 	if err != nil || u == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, ErrUserNotFound
 	}
 
 	if err := s.refreshTokenRepo.DeleteByToken(ctx, refreshToken); err != nil {

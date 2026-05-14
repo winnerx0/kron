@@ -16,8 +16,6 @@ import (
 	"github.com/winnerx0/kron/internal/secret"
 )
 
-var ErrForbidden = errors.New("forbidden")
-
 type Service struct {
 	repo          Repository
 	executionRepo execution.Repository
@@ -166,6 +164,10 @@ func (s *Service) RunJob(ctx context.Context, userID string, id string) error {
 
 	if job.UserID != userID {
 		return ErrForbidden
+	}
+
+	if job.Status == false {
+		return ErrJobDisabled
 	}
 
 	go s.ExecuteJob(context.Background(), job, false)
@@ -333,7 +335,7 @@ func (s *Service) advanceNextRun(ctx context.Context, job Job) {
 func setNextRun(job *Job) error {
 	sched, err := cron.ParseStandard(job.Schedule)
 	if err != nil {
-		return err
+		return InvalidScheduleError{Schedule: job.Schedule, Err: err}
 	}
 	job.NextRunAt = sched.Next(time.Now())
 	return nil

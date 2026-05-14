@@ -35,6 +35,15 @@ func writeJobError(w http.ResponseWriter, err error) {
 		response.WriteError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
+	if errors.Is(err, job.ErrJobDisabled) {
+		response.WriteError(w, http.StatusBadRequest, "Job is disabled")
+		return
+	}
+	var invalidSchedule job.InvalidScheduleError
+	if errors.As(err, &invalidSchedule) {
+		response.WriteError(w, http.StatusBadRequest, "Invalid cron expression")
+		return
+	}
 	response.WriteError(w, http.StatusInternalServerError, err.Error())
 }
 

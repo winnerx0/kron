@@ -77,7 +77,7 @@ func (s *Service) ExchangeCode(ctx context.Context, code string) (*TokenResult, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to exchange code for tokens: status %d", resp.StatusCode)
+		return nil, TokenExchangeError{StatusCode: resp.StatusCode}
 	}
 
 	var result TokenResult
@@ -101,7 +101,7 @@ func (s *Service) SaveUser(ctx context.Context, accessToken string) (*auth.Token
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get user info: status %d", resp.StatusCode)
+		return nil, UserInfoError{StatusCode: resp.StatusCode}
 	}
 
 	var userInfo UserInfo

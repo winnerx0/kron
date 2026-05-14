@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/winnerx0/kron/internal/auth"
@@ -29,7 +30,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.service.Refresh(r.Context(), req.RefreshToken)
 	if err != nil {
-		response.WriteError(w, http.StatusUnauthorized, err.Error())
+		if errors.Is(err, auth.ErrInvalidRefreshToken) ||
+			errors.Is(err, auth.ErrRefreshTokenExpired) ||
+			errors.Is(err, auth.ErrUserNotFound) {
+			response.WriteError(w, http.StatusUnauthorized, err.Error())
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
