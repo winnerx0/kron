@@ -13,8 +13,10 @@ services:
       - certbot_www:/var/www/certbot:ro
       - nginx_logs:/var/log/nginx
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_healthy
     networks:
       - frontend
       - backend
@@ -30,6 +32,12 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=https://kron.winnerx0.dev/api
+    healthcheck:
+      test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
     networks:
       - backend
   backend:
