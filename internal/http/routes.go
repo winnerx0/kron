@@ -11,6 +11,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/winnerx0/kron/internal/auth"
 	"github.com/winnerx0/kron/internal/config"
+	"github.com/winnerx0/kron/internal/dashboard"
 	"github.com/winnerx0/kron/internal/database"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
@@ -60,6 +61,12 @@ func (a *App) Start() error {
 
 	jobService := job.NewJobService(jobRepo, executionRepo, secretManager)
 
+	dashboardRepo := dashboard.NewPostgresRepository(db)
+
+	dashboardService := dashboard.NewService(dashboardRepo)
+
+	dashboardHandler := NewDashboardHandler(dashboardService)
+
 	jobsCh := make(chan job.Job, 10)
 
 	workerCount := 5
@@ -108,6 +115,8 @@ func (a *App) Start() error {
 
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware.Use)
+
+			r.Get("/dashboard", dashboardHandler.Summary)
 
 			r.Route("/job", func(r chi.Router) {
 

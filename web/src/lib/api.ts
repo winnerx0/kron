@@ -36,6 +36,34 @@ export interface Execution {
   finishedAt?: string;
 }
 
+export interface DashboardJob {
+  id: string;
+  name: string;
+  schedule: string;
+  enabled: boolean;
+}
+
+export interface DashboardExecution {
+  id: string;
+  jobID: string;
+  jobName: string;
+  status: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface DashboardData {
+  totalJobs: number;
+  enabledJobs: number;
+  disabledJobs: number;
+  totalExecutions: number;
+  successfulExecutions: number;
+  failedExecutions: number;
+  successRate: number;
+  recentExecutions: DashboardExecution[];
+  jobs: DashboardJob[];
+}
+
 export interface PaginatedExecutions {
   items: Execution[];
   total: number;
@@ -114,6 +142,12 @@ export async function getJobs(): Promise<Job[]> {
 export async function getCurrentUser(): Promise<CurrentUser> {
   const res = await authedFetch("/user/me");
   await expectOk(res, "Failed to fetch user profile");
+  return res.json();
+}
+
+export async function getDashboard(): Promise<DashboardData> {
+  const res = await authedFetch("/dashboard");
+  await expectOk(res, "Failed to fetch dashboard");
   return res.json();
 }
 
