@@ -23,6 +23,7 @@ export interface Job {
   method: string;
   headers: Record<string, string>;
   body?: string;
+  enabled: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -152,6 +153,11 @@ export async function runJob(id: string): Promise<void> {
 export async function stopJob(id: string): Promise<void> {
   const res = await authedFetch(`/job/${id}/stop`, { method: "POST" });
   await expectOk(res, "Failed to stop job");
+}
+
+export async function toggleJobStatus(id: string): Promise<void> {
+  const res = await authedFetch(`/job/${id}/status`, { method: "PATCH" });
+  await expectOk(res, "Failed to update job status");
 }
 
 export async function getExecutionsPage(

@@ -94,7 +94,7 @@ func (a *App) Start() error {
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: false,
 		MaxAge:           300,
@@ -122,6 +122,8 @@ func (a *App) Start() error {
 				r.Post("/{jobID}/run", jobHandler.RunJob)
 
 				r.Post("/{jobID}/stop", jobHandler.StopJob)
+
+				r.Patch("/{jobID}/status", jobHandler.UpdateJobStatus)
 			})
 
 			r.Route("/execution", func(r chi.Router) {

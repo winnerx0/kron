@@ -51,4 +51,5 @@ type JobResponse struct {
 	Method      string         `json:"method"`
 	Headers     map[string]any `json:"headers"`
 	Body        string         `json:"body"`
+	Enabled     bool           `json:"enabled"`
 }

@@ -152,6 +152,7 @@ func (s *Service) FindAll(ctx context.Context, userID string) ([]JobResponse, er
 			Method:      job.Method,
 			Headers:     s.decryptHeadersForResponse(job.Headers),
 			Body:        job.Body,
+			Enabled:     job.Status,
 		})
 	}
 
@@ -323,6 +324,38 @@ func (s *Service) ensureActiveExecutionTracking() {
 	if s.activeRuns == nil {
 		s.activeRuns = map[string]activeRun{}
 	}
+}
+
+func (s *Service) UpdateJobStatus(ctx context.Context, userID string, jobID string) error {
+	job, err := s.repo.FindByID(ctx, jobID)
+	if err != nil {
+		return err
+	}
+
+	if job.UserID != userID {
+		return ErrForbidden
+	}
+
+	job.Status = !job.Status
+
+	if _, err := s.repo.Update(ctx, job); err != nil {
+		return err
+	}
+
+	s.ensureActiveExecutionTracking()
+
+	s.activeMu.Lock()
+	activeRun, ok := s.activeRuns[job.ID]
+	if ok {
+		delete(s.activeRuns, jobID)
+	}
+	s.activeMu.Unlock()
+
+	if ok {
+		activeRun.cancel()
+	}
+
+	return nil
 }
 
 func (s *Service) secretManager() secret.Manager {

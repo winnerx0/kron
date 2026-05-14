@@ -285,3 +285,34 @@ func (h *JobHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(jobs)
 }
+
+// @Summary Update job status
+// @Description Enable or disable a job by its ID
+// @Param jobID path string true "Job ID"
+// @Success 202
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Router /api/job/{jobID}/status [patch]
+func (h *JobHandler) UpdateJobStatus(w http.ResponseWriter, r *http.Request) {
+
+	userID, ok := userIDFromContext(r)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	jobID := chi.URLParam(r, "jobID")
+
+	if jobID == "" {
+		response.WriteError(w, http.StatusBadRequest, "Missing job ID")
+		return
+	}
+
+	if err := h.service.UpdateJobStatus(r.Context(), userID, jobID); err != nil {
+		writeJobError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

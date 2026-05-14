@@ -26,6 +26,8 @@ type Job struct {
 
 	NextRunAt time.Time `gorm:"not null"`
 
+	Status bool `gorm:"not null;default:true"`
+
 	Executions []execution.Execution `gorm:"foreignKey:JobID"`
 
 	UserID string `gorm:"type:uuid;user_id"`

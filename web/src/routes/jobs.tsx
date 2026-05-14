@@ -6,8 +6,17 @@ import {
   CalendarClock,
   Play,
   Square,
+  Power,
+  PowerOff,
 } from "lucide-react";
-import { getJobs, deleteJob, runJob, stopJob, type Job } from "@/lib/api";
+import {
+  getJobs,
+  deleteJob,
+  runJob,
+  stopJob,
+  toggleJobStatus,
+  type Job,
+} from "@/lib/api";
 import { CreateJobDialog } from "@/components/create-job-dialog";
 
 const METHOD_COLORS: Record<string, string> = {
@@ -30,6 +39,25 @@ function MethodBadge({ method }: { method: string }) {
   );
 }
 
+function StatusBadge({ enabled }: { enabled: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+        enabled
+          ? "text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900"
+          : "text-muted-foreground bg-muted border-border"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          enabled ? "bg-emerald-500" : "bg-muted-foreground/50"
+        }`}
+      />
+      {enabled ? "Enabled" : "Disabled"}
+    </span>
+  );
+}
+
 function SkeletonRow() {
   return (
     <tr className="border-b border-border">
@@ -44,6 +72,9 @@ function SkeletonRow() {
       </td>
       <td className="px-5 py-3.5">
         <div className="skeleton h-6 w-24 rounded-full" />
+      </td>
+      <td className="px-5 py-3.5">
+        <div className="skeleton h-5 w-20 rounded-full" />
       </td>
       <td className="px-5 py-3.5">
         <div className="skeleton h-3.5 w-10 ml-auto" />
@@ -110,6 +141,30 @@ export function JobsPage() {
     }
   };
 
+  const handleToggleStatus = async (job: Job) => {
+    const currentEnabled = job.enabled !== false;
+    const nextEnabled = !currentEnabled;
+    try {
+      setBusyJobID(job.id);
+      setJobs((current) =>
+        current.map((item) =>
+          item.id === job.id ? { ...item, enabled: nextEnabled } : item,
+        ),
+      );
+      await toggleJobStatus(job.id);
+      setError(null);
+    } catch (e) {
+      setJobs((current) =>
+        current.map((item) =>
+          item.id === job.id ? { ...item, enabled: currentEnabled } : item,
+        ),
+      );
+      setError(e instanceof Error ? e.message : "Failed to update status");
+    } finally {
+      setBusyJobID(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-end justify-between">
@@ -140,14 +195,16 @@ export function JobsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              {["Name", "Method", "Endpoint", "Schedule", ""].map((h) => (
-                <th
-                  key={h}
-                  className={`px-5 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground ${h === "" ? "text-right" : "text-left"}`}
-                >
-                  {h}
-                </th>
-              ))}
+              {["Name", "Method", "Endpoint", "Schedule", "Status", ""].map(
+                (h) => (
+                  <th
+                    key={h}
+                    className={`px-5 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground ${h === "" ? "text-right" : "text-left"}`}
+                  >
+                    {h}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -155,7 +212,7 @@ export function JobsPage() {
               [...Array(4)].map((_, i) => <SkeletonRow key={i} />)
             ) : jobs.length === 0 ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <div className="flex flex-col items-center justify-center py-16 text-center">
                     <CalendarClock
                       className="w-10 h-10 text-muted-foreground/30 mb-4"
@@ -178,65 +235,89 @@ export function JobsPage() {
                 </td>
               </tr>
             ) : (
-              jobs.map((job, idx) => (
-                <tr
-                  key={job.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group animate-slide-up"
-                  style={{ animationDelay: `${idx * 35}ms` }}
-                >
-                  <td className="px-5 py-3.5 font-medium whitespace-nowrap">
-                    {job.name}
-                  </td>
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    <MethodBadge method={job.method} />
-                  </td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground max-w-xs truncate">
-                    {job.endpoint}
-                  </td>
-                  <td className="px-5 py-3.5 whitespace-nowrap">
-                    <span className="inline-block font-mono text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full border border-border">
-                      {job.schedule}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleRun(job.id)}
-                        disabled={busyJobID === job.id}
-                        title="Run job"
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleStop(job.id)}
-                        disabled={busyJobID === job.id}
-                        title="Stop job"
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                      >
-                        <Square className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelected(job);
-                          setShowDialog(true);
-                        }}
-                        title="Edit job"
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(job.id)}
-                        title="Delete job"
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              jobs.map((job, idx) => {
+                const enabled = job.enabled !== false;
+                return (
+                  <tr
+                    key={job.id}
+                    className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors group animate-slide-up ${
+                      enabled ? "" : "bg-muted/10"
+                    }`}
+                    style={{ animationDelay: `${idx * 35}ms` }}
+                  >
+                    <td className="px-5 py-3.5 font-medium whitespace-nowrap">
+                      {job.name}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <MethodBadge method={job.method} />
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-muted-foreground max-w-xs truncate">
+                      {job.endpoint}
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="inline-block font-mono text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full border border-border">
+                        {job.schedule}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <StatusBadge enabled={enabled} />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleStatus(job)}
+                          disabled={busyJobID === job.id}
+                          title={enabled ? "Disable job" : "Enable job"}
+                          className={`p-1.5 rounded-md transition-colors disabled:opacity-50 ${
+                            enabled
+                              ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {enabled ? (
+                            <PowerOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Power className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleRun(job.id)}
+                          disabled={busyJobID === job.id || !enabled}
+                          title={enabled ? "Run job" : "Enable job to run"}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleStop(job.id)}
+                          disabled={busyJobID === job.id}
+                          title="Stop job"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                        >
+                          <Square className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelected(job);
+                            setShowDialog(true);
+                          }}
+                          title="Edit job"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(job.id)}
+                          title="Delete job"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

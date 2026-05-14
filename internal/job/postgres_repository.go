@@ -30,7 +30,7 @@ func (r *PostgresRepository) FindAll(ctx context.Context, userID string) ([]Job,
 }
 
 func (r *PostgresRepository) FindAllNextRun(ctx context.Context) ([]Job, error) {
-	jobs, err := gorm.G[Job](r.db).Where("next_run_at <= NOW()").Find(ctx)
+	jobs, err := gorm.G[Job](r.db).Where("next_run_at <= NOW() AND status = ?", true).Find(ctx)
 
 	if err != nil {
 		return []Job{}, err
