@@ -53,7 +53,6 @@ func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
 
 	ticker := time.NewTicker(time.Second * 30)
 
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -223,6 +222,7 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 	s.activeRuns[job.ID] = activeRun{executionID: newExecution.ID, cancel: cancel}
 	s.activeMu.Unlock()
 
+	// remove run from active runs when the current run is active run
 	defer func() {
 		s.activeMu.Lock()
 		if run, ok := s.activeRuns[job.ID]; ok && run.executionID == newExecution.ID {
@@ -246,49 +246,71 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 	}
 
 	select {
-		case <-executionCtx.Done():
-			finish(execution.STOPPED)
-			return
-		default:
-	}
-
-	req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
-	if err != nil {
-		log.Println("Error creating request", err)
-		finish(execution.FAILED)
+	case <-executionCtx.Done():
+		finish(execution.STOPPED)
 		return
+	default:
 	}
 
-	headers, err := s.decryptHeaders(job.Headers)
-	if err != nil {
-		log.Println("Error decrypting job headers", err)
-		finish(execution.FAILED)
-		return
-	}
-
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		log.Println("Error sending request", err)
-		if executionCtx.Err() != nil {
-			finish(execution.STOPPED)
+	for attempt := range 5 {
+		req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
+		if err != nil {
+			log.Println("Error creating request", err)
+			finish(execution.FAILED)
 			return
 		}
-		finish(execution.FAILED)
+
+		headers, err := s.decryptHeaders(job.Headers)
+		if err != nil {
+			log.Println("Error decrypting job headers", err)
+			finish(execution.FAILED)
+			return
+		}
+
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			log.Println("Error sending request", err)
+			if errors.Is(executionCtx.Err(), context.Canceled) || errors.Is(executionCtx.Err(), context.DeadlineExceeded) {
+				finish(execution.STOPPED)
+				return
+			}
+			if attempt < 4 {
+				select {
+				case <-executionCtx.Done():
+					finish(execution.STOPPED)
+					return
+				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
+				}
+				continue
+			}
+			finish(execution.FAILED)
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			log.Printf("Error: received status code %d for job %s", resp.StatusCode, job.Name)
+			resp.Body.Close()
+			if resp.StatusCode >= 500 && attempt < 4 {
+				select {
+				case <-executionCtx.Done():
+					finish(execution.STOPPED)
+					return
+				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
+				}
+				continue
+			}
+			finish(execution.FAILED)
+			return
+		}
+
+		resp.Body.Close()
+		finish(execution.SUCCESS)
 		return
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		log.Printf("Error: received status code %d for job %s", resp.StatusCode, job.Name)
-		finish(execution.FAILED)
-		return
-	}
-
-	finish(execution.SUCCESS)
 }
 
 func (s *Service) advanceNextRun(ctx context.Context, job Job) {
@@ -436,4 +458,14 @@ func (s *Service) decryptHeadersForResponse(headers map[string]any) map[string]a
 		responseHeaders[key] = value
 	}
 	return responseHeaders
+}
+
+func exponentialBackoff(attempt int, baseDelay, maxDelay time.Duration) time.Duration {
+	delay := baseDelay * time.Duration(1<<attempt)
+
+	if delay > maxDelay {
+		return maxDelay
+	}
+
+	return delay
 }
