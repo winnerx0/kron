@@ -205,10 +205,6 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 	executionCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	if advanceSchedule {
-		s.advanceNextRun(context.Background(), job)
-	}
-
 	newExecution := execution.Execution{
 		ID:      uuid.NewString(),
 		JobID:   job.ID,
@@ -244,6 +240,10 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 		newExecution.Status = status
 		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
 			log.Println("Error updating execution", err)
+		}
+
+		if advanceSchedule {
+			s.advanceNextRun(context.Background(), job)
 		}
 	}
 

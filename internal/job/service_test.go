@@ -99,7 +99,10 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 	mockRepo := new(MockRepository)
 
 	mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(j Job) bool {
-		return j.ID == job.ID && j.NextRunAt.After(time.Now())
+		return j.ID == job.ID &&
+			j.NextRunAt.Minute()%5 == 0 &&
+			j.NextRunAt.Second() == 0 &&
+			j.NextRunAt.After(time.Now())
 	})).Return(job, nil)
 
 	executionRepo := new(execution.MockRepository)
