@@ -62,7 +62,6 @@ func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
 			}
 
 			for _, job := range jobs {
-				log.Printf("%+v\n", job)
 				jobsCh <- job
 			}
 		}
