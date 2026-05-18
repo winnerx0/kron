@@ -34,7 +34,7 @@ func (r *PostgresRepository) FindAllNextRun(ctx context.Context) ([]Job, error) 
 	var jobs []Job
 
 	err := r.db.
-		Joins("JOIN executions ON executions.job_id = jobs.id AND executions.status = ?", "running").
+		Joins("LEFT JOIN executions ON executions.job_id = jobs.id AND executions.status = ?", "running").
 		Where("jobs.next_run_at <= NOW() AND jobs.status = ? AND executions.id IS NULL", true).
 		Distinct("jobs.id").
 		Find(&jobs).Error
