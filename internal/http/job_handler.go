@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
+	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/job"
 	"github.com/winnerx0/kron/internal/response"
 	"github.com/winnerx0/kron/internal/validator"
@@ -82,7 +83,7 @@ func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newJob, err := h.service.Create(r.Context(), userID, job.Job{
+	newJob, err := h.service.Create(r.Context(), userID, domain.Job{
 		ID:          uuid.NewString(),
 		Name:        createJobRequest.Name,
 		Description: createJobRequest.Description,
@@ -241,7 +242,7 @@ func (h *JobHandler) UpdateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedJob, err := h.service.Update(r.Context(), userID, job.Job{
+	updatedJob, err := h.service.Update(r.Context(), userID, domain.Job{
 		ID:          jobID,
 		Name:        updateJobRequest.Name,
 		Description: updateJobRequest.Description,

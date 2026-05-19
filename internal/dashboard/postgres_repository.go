@@ -3,8 +3,7 @@ package dashboard
 import (
 	"context"
 
-	"github.com/winnerx0/kron/internal/execution"
-	"github.com/winnerx0/kron/internal/job"
+	"github.com/winnerx0/kron/internal/domain"
 	"gorm.io/gorm"
 )
 
@@ -20,14 +19,14 @@ func (r *PostgresRepository) Counts(ctx context.Context, userID string) (Counts,
 	var counts Counts
 
 	if err := r.db.WithContext(ctx).
-		Model(&job.Job{}).
+		Model(&domain.Job{}).
 		Where("user_id = ?", userID).
 		Count(&counts.TotalJobs).Error; err != nil {
 		return counts, err
 	}
 
 	if err := r.db.WithContext(ctx).
-		Model(&job.Job{}).
+		Model(&domain.Job{}).
 		Where("user_id = ? AND status = ?", userID, true).
 		Count(&counts.EnabledJobs).Error; err != nil {
 		return counts, err
@@ -39,13 +38,13 @@ func (r *PostgresRepository) Counts(ctx context.Context, userID string) (Counts,
 	}
 
 	if err := executionQuery(r.db.WithContext(ctx), userID).
-		Where("executions.status = ?", execution.SUCCESS).
+		Where("executions.status = ?", domain.SUCCESS).
 		Count(&counts.SuccessfulExecutions).Error; err != nil {
 		return counts, err
 	}
 
 	if err := executionQuery(r.db.WithContext(ctx), userID).
-		Where("executions.status = ?", execution.FAILED).
+		Where("executions.status = ?", domain.FAILED).
 		Count(&counts.FailedExecutions).Error; err != nil {
 		return counts, err
 	}
@@ -76,7 +75,7 @@ func (r *PostgresRepository) Jobs(ctx context.Context, userID string, limit int)
 	var jobs []JobSummary
 
 	err := r.db.WithContext(ctx).
-		Model(&job.Job{}).
+		Model(&domain.Job{}).
 		Select("id, name, schedule, status AS enabled").
 		Where("user_id = ?", userID).
 		Order("next_run_at ASC").
@@ -87,7 +86,7 @@ func (r *PostgresRepository) Jobs(ctx context.Context, userID string, limit int)
 }
 
 func executionQuery(db *gorm.DB, userID string) *gorm.DB {
-	return db.Model(&execution.Execution{}).
+	return db.Model(&domain.Execution{}).
 		Joins("JOIN jobs ON executions.job_id = jobs.id").
 		Where("jobs.user_id = ?", userID)
 }

@@ -12,11 +12,24 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
+	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/secret"
 )
 
-type Service struct {
+type Service interface {
+	Create(ctx context.Context, userID string, job domain.Job) (domain.Job, error)
+	Update(ctx context.Context, userID string, job domain.Job) (domain.Job, error)
+	Delete(ctx context.Context, userID string, id string) error
+	FindAll(ctx context.Context, userID string) ([]JobResponse, error)
+	RunJob(ctx context.Context, userID string, id string) error
+	StopJob(ctx context.Context, userID string, id string) (bool, error)
+	UpdateJobStatus(ctx context.Context, userID string, jobID string) error
+	ExecuteJob(ctx context.Context, job domain.Job, advanceSchedule bool)
+	RunJobs(ctx context.Context, jobsCh chan<- domain.Job)
+}
+
+type JobService struct {
 	repo          Repository
 	executionRepo execution.Repository
 	client        http.Client
@@ -30,12 +43,12 @@ type activeRun struct {
 	cancel      context.CancelFunc
 }
 
-func NewJobService(repo Repository, executionRepo execution.Repository, managers ...secret.Manager) Service {
+func NewJobService(repo Repository, executionRepo execution.Repository, managers ...secret.Manager) *JobService {
 	var manager secret.Manager = secret.NoopManager{}
 	if len(managers) > 0 && managers[0] != nil {
 		manager = managers[0]
 	}
-	return Service{
+	return &JobService{
 		repo:          repo,
 		executionRepo: executionRepo,
 		client:        http.Client{},
@@ -45,7 +58,7 @@ func NewJobService(repo Repository, executionRepo execution.Repository, managers
 	}
 }
 
-func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
+func (s *JobService) RunJobs(ctx context.Context, jobsCh chan<- domain.Job) {
 
 	fmt.Println("Starting")
 
@@ -68,56 +81,56 @@ func (s *Service) RunJobs(ctx context.Context, jobsCh chan<- Job) {
 	}
 }
 
-func (s *Service) Create(ctx context.Context, userID string, job Job) (Job, error) {
+func (s *JobService) Create(ctx context.Context, userID string, job domain.Job) (domain.Job, error) {
 	job.UserID = userID
 
 	if err := setNextRun(&job); err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	job, err := s.encryptJobSecrets(job, nil)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	createdJob, err := s.repo.Create(ctx, job)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	return s.decryptJobSecrets(createdJob)
 }
 
-func (s *Service) Update(ctx context.Context, userID string, job Job) (Job, error) {
+func (s *JobService) Update(ctx context.Context, userID string, job domain.Job) (domain.Job, error) {
 	existingJob, err := s.repo.FindByID(ctx, job.ID)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	if existingJob.UserID != userID {
-		return Job{}, ErrForbidden
+		return domain.Job{}, ErrForbidden
 	}
 
 	job.UserID = existingJob.UserID
 
 	if err := setNextRun(&job); err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	job, err = s.encryptJobSecrets(job, existingJob.Headers)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	updatedJob, err := s.repo.Update(ctx, job)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	return s.decryptJobSecrets(updatedJob)
 }
 
-func (s *Service) Delete(ctx context.Context, userID string, id string) error {
+func (s *JobService) Delete(ctx context.Context, userID string, id string) error {
 	existingJob, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -137,7 +150,7 @@ func (s *Service) Delete(ctx context.Context, userID string, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *Service) FindAll(ctx context.Context, userID string) ([]JobResponse, error) {
+func (s *JobService) FindAll(ctx context.Context, userID string) ([]JobResponse, error) {
 	jobs, err := s.repo.FindAll(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -161,7 +174,7 @@ func (s *Service) FindAll(ctx context.Context, userID string) ([]JobResponse, er
 	return jobResponses, nil
 }
 
-func (s *Service) RunJob(ctx context.Context, userID string, id string) error {
+func (s *JobService) RunJob(ctx context.Context, userID string, id string) error {
 	job, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
@@ -179,7 +192,7 @@ func (s *Service) RunJob(ctx context.Context, userID string, id string) error {
 	return nil
 }
 
-func (s *Service) StopJob(ctx context.Context, userID string, id string) (bool, error) {
+func (s *JobService) StopJob(ctx context.Context, userID string, id string) (bool, error) {
 	job, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return false, err
@@ -203,17 +216,17 @@ func (s *Service) StopJob(ctx context.Context, userID string, id string) (bool, 
 	return true, nil
 }
 
-func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool) {
+func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSchedule bool) {
 
 	s.ensureActiveExecutionTracking()
 
 	executionCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	newExecution := execution.Execution{
+	newExecution := domain.Execution{
 		ID:      uuid.NewString(),
 		JobID:   job.ID,
-		Status:  execution.RUNNING,
+		Status:  domain.RUNNING,
 		Started: time.Now(),
 	}
 
@@ -240,7 +253,7 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 		return
 	}
 
-	finish := func(status execution.ExecutionStatus) {
+	finish := func(status domain.ExecutionStatus) {
 		newExecution.Finished = time.Now()
 		newExecution.Status = status
 		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
@@ -254,7 +267,7 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 
 	select {
 	case <-executionCtx.Done():
-		finish(execution.STOPPED)
+		finish(domain.STOPPED)
 		return
 	default:
 	}
@@ -263,14 +276,14 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 		req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
 		if err != nil {
 			log.Println("Error creating request", err)
-			finish(execution.FAILED)
+			finish(domain.FAILED)
 			return
 		}
 
 		headers, err := s.decryptHeaders(job.Headers)
 		if err != nil {
 			log.Println("Error decrypting job headers", err)
-			finish(execution.FAILED)
+			finish(domain.FAILED)
 			return
 		}
 
@@ -282,19 +295,19 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 		if err != nil {
 			log.Println("Error sending request", err)
 			if errors.Is(executionCtx.Err(), context.Canceled) || errors.Is(executionCtx.Err(), context.DeadlineExceeded) {
-				finish(execution.STOPPED)
+				finish(domain.STOPPED)
 				return
 			}
 			if attempt < 4 {
 				select {
 				case <-executionCtx.Done():
-					finish(execution.STOPPED)
+					finish(domain.STOPPED)
 					return
 				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
 				}
 				continue
 			}
-			finish(execution.FAILED)
+			finish(domain.FAILED)
 			return
 		}
 
@@ -304,23 +317,23 @@ func (s *Service) ExecuteJob(ctx context.Context, job Job, advanceSchedule bool)
 			if resp.StatusCode >= 500 && attempt < 4 {
 				select {
 				case <-executionCtx.Done():
-					finish(execution.STOPPED)
+					finish(domain.STOPPED)
 					return
 				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
 				}
 				continue
 			}
-			finish(execution.FAILED)
+			finish(domain.FAILED)
 			return
 		}
 
 		resp.Body.Close()
-		finish(execution.SUCCESS)
+		finish(domain.SUCCESS)
 		return
 	}
 }
 
-func (s *Service) advanceNextRun(ctx context.Context, job Job) {
+func (s *JobService) advanceNextRun(ctx context.Context, job domain.Job) {
 	if err := setNextRun(&job); err != nil {
 		log.Println("Error parsing cron expression", err)
 		return
@@ -337,7 +350,7 @@ func (s *Service) advanceNextRun(ctx context.Context, job Job) {
 	}
 }
 
-func setNextRun(job *Job) error {
+func setNextRun(job *domain.Job) error {
 	sched, err := cron.ParseStandard(job.Schedule)
 	if err != nil {
 		return InvalidScheduleError{Schedule: job.Schedule, Err: err}
@@ -346,7 +359,7 @@ func setNextRun(job *Job) error {
 	return nil
 }
 
-func (s *Service) ensureActiveExecutionTracking() {
+func (s *JobService) ensureActiveExecutionTracking() {
 	if s.activeMu == nil {
 		s.activeMu = &sync.Mutex{}
 	}
@@ -355,7 +368,7 @@ func (s *Service) ensureActiveExecutionTracking() {
 	}
 }
 
-func (s *Service) UpdateJobStatus(ctx context.Context, userID string, jobID string) error {
+func (s *JobService) UpdateJobStatus(ctx context.Context, userID string, jobID string) error {
 	job, err := s.repo.FindByID(ctx, jobID)
 	if err != nil {
 		return err
@@ -387,14 +400,14 @@ func (s *Service) UpdateJobStatus(ctx context.Context, userID string, jobID stri
 	return nil
 }
 
-func (s *Service) secretManager() secret.Manager {
+func (s *JobService) secretManager() secret.Manager {
 	if s.secrets == nil {
 		return secret.NoopManager{}
 	}
 	return s.secrets
 }
 
-func (s *Service) encryptJobSecrets(job Job, existingHeaders map[string]any) (Job, error) {
+func (s *JobService) encryptJobSecrets(job domain.Job, existingHeaders map[string]any) (domain.Job, error) {
 	headers := make(map[string]any, len(job.Headers))
 	for key, value := range job.Headers {
 		valueString := fmt.Sprintf("%v", value)
@@ -412,7 +425,7 @@ func (s *Service) encryptJobSecrets(job Job, existingHeaders map[string]any) (Jo
 
 		encryptedValue, err := s.secretManager().Encrypt(valueString)
 		if err != nil {
-			return Job{}, err
+			return domain.Job{}, err
 		}
 		headers[key] = encryptedValue
 	}
@@ -421,7 +434,7 @@ func (s *Service) encryptJobSecrets(job Job, existingHeaders map[string]any) (Jo
 	return job, nil
 }
 
-func (s *Service) decryptHeaders(headers map[string]any) (map[string]string, error) {
+func (s *JobService) decryptHeaders(headers map[string]any) (map[string]string, error) {
 	decrypted := make(map[string]string, len(headers))
 	for key, value := range headers {
 		valueString := fmt.Sprintf("%v", value)
@@ -439,10 +452,10 @@ func (s *Service) decryptHeaders(headers map[string]any) (map[string]string, err
 	return decrypted, nil
 }
 
-func (s *Service) decryptJobSecrets(job Job) (Job, error) {
+func (s *JobService) decryptJobSecrets(job domain.Job) (domain.Job, error) {
 	headers, err := s.decryptHeaders(job.Headers)
 	if err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 
 	decryptedHeaders := make(map[string]any, len(headers))
@@ -454,7 +467,7 @@ func (s *Service) decryptJobSecrets(job Job) (Job, error) {
 	return job, nil
 }
 
-func (s *Service) decryptHeadersForResponse(headers map[string]any) map[string]any {
+func (s *JobService) decryptHeadersForResponse(headers map[string]any) map[string]any {
 	decrypted, err := s.decryptHeaders(headers)
 	if err != nil {
 		return headers

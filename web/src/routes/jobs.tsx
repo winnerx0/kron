@@ -19,6 +19,7 @@ import {
   type Job,
 } from "@/lib/api";
 import { CreateJobDialog } from "@/components/create-job-dialog";
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900",
@@ -92,6 +93,8 @@ export function JobsPage() {
   const [selected, setSelected] = useState<Job | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [busyJobID, setBusyJobID] = useState<string | null>(null);
+  const [deleteJobID, setDeleteJobID] = useState<string | null>(null);
+  const [deletingJobID, setDeletingJobID] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -109,14 +112,22 @@ export function JobsPage() {
     load();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this job?")) return;
+  const handleDeleteClick = (id: string) => {
+    setDeleteJobID(id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteJobID) return;
     try {
-      await deleteJob(id);
-      setJobs((j) => j.filter((x) => x.id !== id));
-      posthog.capture('job_deleted', { job_id: id });
+      setDeletingJobID(deleteJobID);
+      await deleteJob(deleteJobID);
+      setJobs((j) => j.filter((x) => x.id !== deleteJobID));
+      posthog.capture('job_deleted', { job_id: deleteJobID });
+      setDeleteJobID(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeletingJobID(null);
     }
   };
 
@@ -313,9 +324,10 @@ export function JobsPage() {
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDelete(job.id)}
+                          onClick={() => handleDeleteClick(job.id)}
+                          disabled={busyJobID === job.id}
                           title="Delete job"
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -346,6 +358,14 @@ export function JobsPage() {
           setSelected(null);
           load();
         }}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteJobID !== null}
+        onOpenChange={() => setDeleteJobID(null)}
+        jobName={jobs.find(j => j.id === deleteJobID)?.name ?? ""}
+        onConfirm={handleDeleteConfirm}
+        loading={deletingJobID !== null}
       />
     </div>
   );

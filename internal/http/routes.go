@@ -13,6 +13,7 @@ import (
 	"github.com/winnerx0/kron/internal/config"
 	"github.com/winnerx0/kron/internal/dashboard"
 	"github.com/winnerx0/kron/internal/database"
+	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
 	"github.com/winnerx0/kron/internal/middleware"
@@ -67,16 +68,16 @@ func (a *App) Start() error {
 
 	dashboardHandler := NewDashboardHandler(dashboardService)
 
-	jobsCh := make(chan job.Job, 10)
+	jobsCh := make(chan domain.Job, 10)
 
 	workerCount := 5
 
-	func(jobs <-chan job.Job) {
+	func(jobs <-chan domain.Job) {
 		for range workerCount {
 			go func() {
 				log.Println("Worker started and waiting for jobs")
-				for job := range jobs {
-					jobService.ExecuteJob(context.Background(), job, true)
+				for j := range jobs {
+					jobService.ExecuteJob(context.Background(), j, true)
 				}
 
 			}()

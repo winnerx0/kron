@@ -1,9 +1,11 @@
 package execution
 
+import "github.com/winnerx0/kron/internal/domain"
+
 type PaginatedExecutionsResponse struct {
-	Items      []Execution `json:"items"`
-	Total      int64       `json:"total"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"pageSize"`
-	TotalPages int         `json:"totalPages"`
+	Items      []domain.Execution `json:"items"`
+	Total      int64              `json:"total"`
+	Page       int                `json:"page"`
+	PageSize   int                `json:"pageSize"`
+	TotalPages int                `json:"totalPages"`
 }

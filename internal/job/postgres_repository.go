@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 
+	"github.com/winnerx0/kron/internal/domain"
 	"gorm.io/gorm"
 )
 
@@ -15,23 +16,23 @@ func NewRepository(db *gorm.DB) *PostgresRepository {
 
 }
 
-func (r *PostgresRepository) FindAll(ctx context.Context, userID string) ([]Job, error) {
-	jobs, err := gorm.G[Job](r.db).Where("user_id = ?", userID).Find(ctx)
+func (r *PostgresRepository) FindAll(ctx context.Context, userID string) ([]domain.Job, error) {
+	jobs, err := gorm.G[domain.Job](r.db).Where("user_id = ?", userID).Find(ctx)
 
 	if err != nil {
-		return []Job{}, err
+		return []domain.Job{}, err
 	}
 
 	if len(jobs) == 0 {
-		return []Job{}, nil
+		return []domain.Job{}, nil
 	}
 
 	return jobs, nil
 }
 
-func (r *PostgresRepository) FindAllNextRun(ctx context.Context) ([]Job, error) {
+func (r *PostgresRepository) FindAllNextRun(ctx context.Context) ([]domain.Job, error) {
 
-	var jobs []Job
+	var jobs []domain.Job
 
 	err := r.db.
 		Select("jobs.*").
@@ -40,34 +41,34 @@ func (r *PostgresRepository) FindAllNextRun(ctx context.Context) ([]Job, error) 
 		Find(&jobs).Error
 
 	if err != nil {
-		return []Job{}, err
+		return []domain.Job{}, err
 	}
 
 	if len(jobs) == 0 {
-		return []Job{}, nil
+		return []domain.Job{}, nil
 	}
 
 	return jobs, nil
 }
 
-func (r *PostgresRepository) FindByID(ctx context.Context, id string) (Job, error) {
-	return gorm.G[Job](r.db).Where("id = ?", id).First(ctx)
+func (r *PostgresRepository) FindByID(ctx context.Context, id string) (domain.Job, error) {
+	return gorm.G[domain.Job](r.db).Where("id = ?", id).First(ctx)
 }
 
-func (r *PostgresRepository) Create(ctx context.Context, job Job) (Job, error) {
+func (r *PostgresRepository) Create(ctx context.Context, job domain.Job) (domain.Job, error) {
 	if err := r.db.WithContext(ctx).Create(&job).Error; err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 	return job, nil
 }
 
-func (r *PostgresRepository) Update(ctx context.Context, job Job) (Job, error) {
+func (r *PostgresRepository) Update(ctx context.Context, job domain.Job) (domain.Job, error) {
 	if err := r.db.WithContext(ctx).Save(&job).Error; err != nil {
-		return Job{}, err
+		return domain.Job{}, err
 	}
 	return job, nil
 }
 
 func (r *PostgresRepository) Delete(ctx context.Context, jobID string) error {
-	return r.db.WithContext(ctx).Delete(&Job{ID: jobID}).Error
+	return r.db.WithContext(ctx).Delete(&domain.Job{ID: jobID}).Error
 }

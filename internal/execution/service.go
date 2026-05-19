@@ -1,16 +1,26 @@
 package execution
 
-import "context"
+import (
+	"context"
 
-type Service struct {
+	"github.com/winnerx0/kron/internal/domain"
+)
+
+type Service interface {
+	FindAll(ctx context.Context, page int, pageSize int) (PaginatedExecutionsResponse, error)
+	FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error)
+	Create(ctx context.Context, execution domain.Execution) error
+}
+
+type ExecutionService struct {
 	repo Repository
 }
 
-func NewExecutionService(repo Repository) Service {
-	return Service{repo: repo}
+func NewExecutionService(repo Repository) *ExecutionService {
+	return &ExecutionService{repo: repo}
 }
 
-func (s *Service) FindAll(ctx context.Context, page int, pageSize int) (PaginatedExecutionsResponse, error) {
+func (s *ExecutionService) FindAll(ctx context.Context, page int, pageSize int) (PaginatedExecutionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -41,10 +51,10 @@ func (s *Service) FindAll(ctx context.Context, page int, pageSize int) (Paginate
 	}, nil
 }
 
-func (s *Service) FindByJobID(ctx context.Context, jobID string) ([]Execution, error) {
+func (s *ExecutionService) FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error) {
 	return s.repo.FindByJobID(ctx, jobID)
 }
 
-func (s *Service) Create(ctx context.Context, execution Execution) error {
+func (s *ExecutionService) Create(ctx context.Context, execution domain.Execution) error {
 	return s.repo.Save(ctx, execution)
 }

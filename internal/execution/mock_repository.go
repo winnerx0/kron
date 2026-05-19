@@ -4,28 +4,29 @@ import (
 	"context"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/winnerx0/kron/internal/domain"
 )
 
 type MockRepository struct {
 	mock.Mock
 }
 
-func (mock *MockRepository) Save(ctx context.Context, execution Execution) error {
-	args := mock.Called(ctx, execution)
+func (m *MockRepository) Save(ctx context.Context, execution domain.Execution) error {
+	args := m.Called(ctx, execution)
 	return args.Error(0)
 }
 
-func (mock *MockRepository) FindByJobID(ctx context.Context, jobID string) ([]Execution, error) {
-	args := mock.Called(ctx, jobID)
-	return args.Get(0).([]Execution), args.Error(0)
+func (m *MockRepository) FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error) {
+	args := m.Called(ctx, jobID)
+	return args.Get(0).([]domain.Execution), args.Error(1)
 }
 
-func (mock *MockRepository) FindAll(ctx context.Context, limit int, offset int) ([]Execution, int64, error) {
-	args := mock.Called(ctx, limit, offset)
-	return args.Get(0).([]Execution), args.Get(1).(int64), args.Error(2)
+func (m *MockRepository) FindAll(ctx context.Context, limit int, offset int) ([]domain.Execution, int64, error) {
+	args := m.Called(ctx, limit, offset)
+	return args.Get(0).([]domain.Execution), args.Get(1).(int64), args.Error(2)
 }
 
-func (mock *MockRepository) Update(ctx context.Context, execution Execution) error {
-	args := mock.Called(ctx, execution)
+func (m *MockRepository) Update(ctx context.Context, execution domain.Execution) error {
+	args := m.Called(ctx, execution)
 	return args.Error(0)
 }
