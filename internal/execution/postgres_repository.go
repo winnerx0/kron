@@ -35,6 +35,7 @@ func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int,
 	}
 
 	query := r.db.WithContext(ctx).Model(&domain.Execution{}).
+		Select("executions.*").
 		Joins("JOIN jobs ON executions.job_id = jobs.id").
 		Where("jobs.user_id = ?", userID)
 
