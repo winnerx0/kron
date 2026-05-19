@@ -29,8 +29,9 @@ func NewExecutionHandler(service execution.Service) *ExecutionHandler {
 func (h *ExecutionHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
 	pageSize := parsePositiveInt(r.URL.Query().Get("pageSize"), 10)
+	jobID := r.URL.Query().Get("jobID")
 
-	executions, err := h.service.FindAll(r.Context(), page, pageSize)
+	executions, err := h.service.FindAll(r.Context(), jobID, page, pageSize)
 
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, err.Error())

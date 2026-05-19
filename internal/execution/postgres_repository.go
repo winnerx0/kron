@@ -25,7 +25,7 @@ func (r *PostgresRepository) FindByJobID(ctx context.Context, jobID string) ([]d
 	return executions, err
 }
 
-func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int) ([]domain.Execution, int64, error) {
+func (r *PostgresRepository) FindAll(ctx context.Context, jobID string, limit int, offset int) ([]domain.Execution, int64, error) {
 	var executions []domain.Execution
 	var total int64
 
@@ -36,14 +36,14 @@ func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int)
 
 	if err := r.db.WithContext(ctx).Model(&domain.Execution{}).
 		Joins("JOIN jobs ON executions.job_id = jobs.id").
-		Where("jobs.user_id = ?", userID).
+		Where("jobs.user_id = ? AND executions.job_id = ?", userID, jobID).
 		Count(&total).Error; err != nil {
 		return executions, 0, err
 	}
 
 	err := r.db.WithContext(ctx).
 		Joins("JOIN jobs ON executions.job_id = jobs.id").
-		Where("jobs.user_id = ?", userID).
+		Where("jobs.user_id = ? AND executions.job_id = ?", userID, jobID).
 		Order("started DESC").
 		Limit(limit).
 		Offset(offset).
