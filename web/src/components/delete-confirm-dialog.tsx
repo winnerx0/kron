@@ -43,7 +43,7 @@ export function DeleteConfirmDialog({ open, onOpenChange, jobName, onConfirm, lo
         {/* Body */}
         <div className="px-6 py-4 flex-1">
           <p className="text-sm text-foreground">
-            Are you sure you want to delete <span className="font-medium">{jobName}</span>? Any scheduled executions will be canceled.
+            Are you sure you want to delete <span className="font-medium">{jobName}</span> ? Any scheduled executions will be deleted.
           </p>
         </div>
 
