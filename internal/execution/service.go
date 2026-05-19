@@ -7,7 +7,7 @@ import (
 )
 
 type Service interface {
-	FindAll(ctx context.Context, jobID string, page int, pageSize int) (PaginatedExecutionsResponse, error)
+	FindAll(ctx context.Context, page int, pageSize int, jobID string) (PaginatedExecutionsResponse, error)
 	FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error)
 	Create(ctx context.Context, execution domain.Execution) error
 }
@@ -20,7 +20,7 @@ func NewExecutionService(repo Repository) *ExecutionService {
 	return &ExecutionService{repo: repo}
 }
 
-func (s *ExecutionService) FindAll(ctx context.Context, jobID string, page int, pageSize int) (PaginatedExecutionsResponse, error) {
+func (s *ExecutionService) FindAll(ctx context.Context, page int, pageSize int, jobID string) (PaginatedExecutionsResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -32,7 +32,7 @@ func (s *ExecutionService) FindAll(ctx context.Context, jobID string, page int, 
 	}
 
 	offset := (page - 1) * pageSize
-	executions, total, err := s.repo.FindAll(ctx, jobID, pageSize, offset)
+	executions, total, err := s.repo.FindAll(ctx, pageSize, offset, jobID)
 	if err != nil {
 		return PaginatedExecutionsResponse{}, err
 	}

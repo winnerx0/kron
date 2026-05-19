@@ -197,18 +197,21 @@ export async function toggleJobStatus(id: string): Promise<void> {
 export async function getExecutionsPage(
   page = 1,
   pageSize = 10,
-  jobID: string,
+  jobID?: string,
 ): Promise<PaginatedExecutions> {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
-  const res = await authedFetch(`/execution/${jobID}/all?${params.toString()}`);
+  if (jobID) {
+    params.append("jobID", jobID);
+  }
+  const res = await authedFetch(`/execution/all?${params.toString()}`);
   await expectOk(res, "Failed to fetch executions");
   return res.json();
 }
 
-export async function getExecutions(jobID: string): Promise<Execution[]> {
+export async function getExecutions(jobID?: string): Promise<Execution[]> {
   const data = await getExecutionsPage(1, 10, jobID);
   return data.items;
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/response"
 )
@@ -26,13 +25,13 @@ func NewExecutionHandler(service execution.Service) *ExecutionHandler {
 // @Produce json
 // @Success 200 {array} execution.Execution
 // @Failure 500 {object} map[string]string
-// @Router /api/execution/{jobID}/all [get]
+// @Router /api/execution/all [get]
 func (h *ExecutionHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
 	pageSize := parsePositiveInt(r.URL.Query().Get("pageSize"), 10)
-	jobID := chi.URLParam(r, "jobID")
+	jobID := r.URL.Query().Get("jobID")
 
-	executions, err := h.service.FindAll(r.Context(), jobID, page, pageSize)
+	executions, err := h.service.FindAll(r.Context(), page, pageSize, jobID)
 
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, err.Error())
