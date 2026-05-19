@@ -30,6 +30,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:80/api
+      - VITE_POSTHOG_API_KEY=${VITE_POSTHOG_API_KEY}
+      - VITE_POSTHOG_API_HOST=${VITE_POSTHOG_API_HOST}
     healthcheck:
       test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 5s
