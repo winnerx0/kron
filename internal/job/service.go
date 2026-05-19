@@ -127,6 +127,13 @@ func (s *Service) Delete(ctx context.Context, userID string, id string) error {
 		return ErrForbidden
 	}
 
+	activeRun, ok := s.activeRuns[existingJob.ID]
+	
+	if ok {
+		activeRun.cancel()
+		delete(s.activeRuns, existingJob.ID)
+	}
+
 	return s.repo.Delete(ctx, id)
 }
 

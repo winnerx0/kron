@@ -28,7 +28,7 @@ type Job struct {
 
 	Status bool `gorm:"not null;default:true"`
 
-	Executions []execution.Execution `gorm:"foreignKey:JobID"`
+	Executions []execution.Execution `gorm:"foreignKey:JobID;constraint:OnDelete:CASCADE"`
 
 	UserID string `gorm:"type:uuid;user_id"`
 }
