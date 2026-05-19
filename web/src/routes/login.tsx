@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { usePostHog } from "posthog-js/react";
 import { FcGoogle } from "react-icons/fc";
 import { getAccessToken, LOGIN_URL } from "@/lib/auth";
 import { KronMark } from "@/components/kron-mark";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
 
   useEffect(() => {
     if (getAccessToken()) navigate({ to: "/dashboard", replace: true });
@@ -40,6 +42,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => {
+              posthog.capture('login_clicked', { method: 'google' });
               window.location.href = LOGIN_URL;
             }}
             className="group flex h-12 w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-all hover:bg-muted active:scale-[0.99]"

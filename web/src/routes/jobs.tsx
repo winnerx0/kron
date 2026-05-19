@@ -9,6 +9,7 @@ import {
   Power,
   PowerOff,
 } from "lucide-react";
+import { usePostHog } from "posthog-js/react";
 import {
   getJobs,
   deleteJob,
@@ -84,6 +85,7 @@ function SkeletonRow() {
 }
 
 export function JobsPage() {
+  const posthog = usePostHog();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +114,7 @@ export function JobsPage() {
     try {
       await deleteJob(id);
       setJobs((j) => j.filter((x) => x.id !== id));
+      posthog.capture('job_deleted', { job_id: id });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
     }
@@ -121,6 +124,7 @@ export function JobsPage() {
     try {
       setBusyJobID(id);
       await runJob(id);
+      posthog.capture('job_run', { job_id: id });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to run");
@@ -133,6 +137,7 @@ export function JobsPage() {
     try {
       setBusyJobID(id);
       await stopJob(id);
+      posthog.capture('job_stopped', { job_id: id });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to stop");
@@ -152,6 +157,7 @@ export function JobsPage() {
         ),
       );
       await toggleJobStatus(job.id);
+      posthog.capture('job_status_toggled', { job_id: job.id, job_name: job.name, enabled: nextEnabled });
       setError(null);
     } catch (e) {
       setJobs((current) =>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Plus, Trash2, Eye, EyeOff } from 'lucide-react'
+import { usePostHog } from 'posthog-js/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createJob, updateJob, type Job, type CreateJobRequest } from '@/lib/api'
@@ -67,6 +68,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 export function CreateJobDialog({ open, onOpenChange, job, onJobSaved }: Props) {
+  const posthog = usePostHog()
   const [form, setForm] = useState<CreateJobRequest>(EMPTY)
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>([])
   const [visibleHeaders, setVisibleHeaders] = useState<Set<number>>(new Set())
@@ -95,9 +97,16 @@ export function CreateJobDialog({ open, onOpenChange, job, onJobSaved }: Props) 
     setLoading(true)
     try {
       const payload = { ...form, headers: rowsToHeaders(headerRows) }
-      job?.id ? await updateJob(job.id, payload) : await createJob(payload)
+      if (job?.id) {
+        await updateJob(job.id, payload)
+        posthog.capture('job_updated', { job_id: job.id, job_name: payload.name, method: payload.method, schedule: payload.schedule })
+      } else {
+        const created = await createJob(payload)
+        posthog.capture('job_created', { job_id: created.id, job_name: created.name, method: created.method, schedule: created.schedule })
+      }
       onJobSaved()
     } catch (err) {
+      posthog.captureException(err)
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)

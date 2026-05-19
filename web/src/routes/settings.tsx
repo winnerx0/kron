@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LogOut, UserRound } from 'lucide-react'
+import { usePostHog } from 'posthog-js/react'
 import { clearTokens } from '@/lib/auth'
 import { CurrentUser, getCurrentUser } from '@/lib/api'
 
@@ -40,7 +41,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 }
 
 export function SettingsPage() {
-  
+  const posthog = usePostHog()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [loadingUser, setLoadingUser] = useState(true)
   const [userError, setUserError] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export function SettingsPage() {
         if (!active) return
         setUser(profile)
         setUserError(null)
+        posthog.identify(profile.id, { email: profile.email, name: profile.name })
       })
       .catch(err => {
         if (!active) return
@@ -65,7 +67,7 @@ export function SettingsPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [posthog])
 
   const joinedAt = useMemo(() => {
     if (!user?.joined_at) return 'Not available'
@@ -76,6 +78,8 @@ export function SettingsPage() {
   }, [user?.joined_at])
 
   const signOut = () => {
+    posthog.capture('signed_out')
+    posthog.reset()
     clearTokens()
     window.location.href = '/login'
   }

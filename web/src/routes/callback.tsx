@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { usePostHog } from "posthog-js/react";
 import { setTokens } from "@/lib/auth";
 
 export function CallbackPage() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const search = useSearch({ strict: false }) as {
     access?: string;
     refresh?: string;
@@ -19,8 +21,9 @@ export function CallbackPage() {
       access_token: search.access,
       refresh_token: search.refresh,
     });
+    posthog.capture('login_completed', { method: 'google' });
     navigate({ to: "/dashboard", replace: true });
-  }, [search.access, search.refresh, navigate]);
+  }, [search.access, search.refresh, navigate, posthog]);
 
   return (
     <div className="flex h-screen items-center justify-center">
