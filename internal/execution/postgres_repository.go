@@ -29,13 +29,21 @@ func (r *PostgresRepository) FindAll(ctx context.Context, limit int, offset int)
 	var executions []domain.Execution
 	var total int64
 
-	if err := r.db.WithContext(ctx).Model(&domain.Execution{}).Count(&total).Error; err != nil {
+	userID, ok := ctx.Value("userId").(string)
+	if !ok {
+		return executions, 0, nil
+	}
+
+	if err := r.db.WithContext(ctx).Model(&domain.Execution{}).
+		Joins("JOIN jobs ON executions.job_id = jobs.id").
+		Where("jobs.user_id = ?", userID).
+		Count(&total).Error; err != nil {
 		return executions, 0, err
 	}
 
 	err := r.db.WithContext(ctx).
-		InnerJoins("JOIN jobs ON executions.job_id = jobs.id").
-		Where("jobs.user_id = ?", ctx.Value("userId").(string)).
+		Joins("JOIN jobs ON executions.job_id = jobs.id").
+		Where("jobs.user_id = ?", userID).
 		Order("started DESC").
 		Limit(limit).
 		Offset(offset).

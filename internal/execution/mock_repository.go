@@ -23,6 +23,9 @@ func (m *MockRepository) FindByJobID(ctx context.Context, jobID string) ([]domai
 
 func (m *MockRepository) FindAll(ctx context.Context, limit int, offset int) ([]domain.Execution, int64, error) {
 	args := m.Called(ctx, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(int64), args.Error(2)
+	}
 	return args.Get(0).([]domain.Execution), args.Get(1).(int64), args.Error(2)
 }
 

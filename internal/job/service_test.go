@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
+	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/secret"
 )
@@ -19,7 +20,7 @@ func TestUserService_Create_Success(t *testing.T) {
 
 	ctx := context.Background()
 
-	job := Job{
+	job := domain.Job{
 		ID:     uuid.NewString(),
 		Name:   "Job 1",
 		Method: "GET",
@@ -33,16 +34,13 @@ func TestUserService_Create_Success(t *testing.T) {
 
 	mockRepo := new(MockRepository)
 
-	mockRepo.On("Create", ctx, mock.MatchedBy(func(j Job) bool {
+	mockRepo.On("Create", ctx, mock.MatchedBy(func(j domain.Job) bool {
 		return j.ID == job.ID && j.NextRunAt.After(time.Now())
 	})).Return(job, nil)
 
 	executionRepo := new(execution.MockRepository)
 
-	service := Service{
-		repo:          mockRepo,
-		executionRepo: executionRepo,
-	}
+	service := NewJobService(mockRepo, executionRepo)
 
 	result, err := service.Create(ctx, uuid.NewString(), job)
 
@@ -65,7 +63,7 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 
 	ctx := context.Background()
 
-	job := Job{
+	job := domain.Job{
 		ID:     uuid.NewString(),
 		Name:   "Job 1",
 		Method: "GET",
@@ -98,7 +96,7 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 
 	mockRepo := new(MockRepository)
 
-	mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(j Job) bool {
+	mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(j domain.Job) bool {
 		return j.ID == job.ID &&
 			j.NextRunAt.Minute()%5 == 0 &&
 			j.NextRunAt.Second() == 0 &&
@@ -107,19 +105,15 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 
 	executionRepo := new(execution.MockRepository)
 
-	executionRepo.On("Save", mock.Anything, mock.MatchedBy(func(e execution.Execution) bool {
-		return e.JobID == job.ID && e.Status == execution.RUNNING
+	executionRepo.On("Save", mock.Anything, mock.MatchedBy(func(e domain.Execution) bool {
+		return e.JobID == job.ID && e.Status == domain.RUNNING
 	})).Return(nil)
 
-	executionRepo.On("Update", mock.Anything, mock.MatchedBy(func(e execution.Execution) bool {
-		return e.JobID == job.ID && e.Status == execution.SUCCESS
+	executionRepo.On("Update", mock.Anything, mock.MatchedBy(func(e domain.Execution) bool {
+		return e.JobID == job.ID && e.Status == domain.SUCCESS
 	})).Return(nil)
 
-	service := Service{
-		repo:          mockRepo,
-		executionRepo: executionRepo,
-		client:        *mockServer.Client(),
-	}
+	service := NewJobService(mockRepo, executionRepo)
 
 	service.ExecuteJob(ctx, job, true)
 
@@ -134,7 +128,7 @@ func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
 		t.Fatalf("unexpected manager error: %v", err)
 	}
 
-	job := Job{
+	job := domain.Job{
 		ID:       uuid.NewString(),
 		Name:     "Job 1",
 		Method:   "GET",
@@ -151,7 +145,7 @@ func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
 	}
 
 	mockRepo := new(MockRepository)
-	mockRepo.On("Create", ctx, mock.MatchedBy(func(j Job) bool {
+	mockRepo.On("Create", ctx, mock.MatchedBy(func(j domain.Job) bool {
 		authorization, ok := j.Headers["Authorization"].(string)
 		if !ok || !strings.HasPrefix(authorization, "kron:v1:") {
 			return false
@@ -162,7 +156,7 @@ func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
 			decrypted == "Bearer raw-token" &&
 			j.Headers["Content-Type"] == "application/json" &&
 			j.NextRunAt.After(time.Now())
-	})).Return(Job{
+	})).Return(domain.Job{
 		ID:       job.ID,
 		Name:     job.Name,
 		Method:   job.Method,
@@ -205,14 +199,14 @@ func TestJobService_Update_PreservesMaskedSensitiveHeaders(t *testing.T) {
 
 	jobID := uuid.NewString()
 	userID := uuid.NewString()
-	existingJob := Job{
+	existingJob := domain.Job{
 		ID:     jobID,
 		UserID: userID,
 		Headers: map[string]any{
 			"Authorization": encrypted,
 		},
 	}
-	updateJob := Job{
+	updateJob := domain.Job{
 		ID:       jobID,
 		Name:     "Updated",
 		Method:   "GET",
@@ -225,9 +219,9 @@ func TestJobService_Update_PreservesMaskedSensitiveHeaders(t *testing.T) {
 
 	mockRepo := new(MockRepository)
 	mockRepo.On("FindByID", ctx, jobID).Return(existingJob, nil)
-	mockRepo.On("Update", ctx, mock.MatchedBy(func(j Job) bool {
+	mockRepo.On("Update", ctx, mock.MatchedBy(func(j domain.Job) bool {
 		return j.Headers["Authorization"] == encrypted
-	})).Return(Job{
+	})).Return(domain.Job{
 		ID:       updateJob.ID,
 		Name:     updateJob.Name,
 		Method:   updateJob.Method,

@@ -6,16 +6,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/winnerx0/kron/internal/domain"
 )
 
 func TestExecutionService_Create_Success(t *testing.T){
 
 	ctx := context.Background()
 
-	execution := Execution{
+	execution := domain.Execution{
 		ID:     uuid.NewString(),
 		JobID:  uuid.NewString(),
-		Status: RUNNING,
+		Status: domain.RUNNING,
 		Started: time.Now(),
 		Finished: time.Now().Add(1 * time.Minute),
 	}
@@ -24,9 +25,7 @@ func TestExecutionService_Create_Success(t *testing.T){
 
 	mockRepo.On("Save", ctx, execution).Return(nil)
 
-	service := Service{
-		repo: mockRepo,
-	}
+	service := NewExecutionService(mockRepo)
 
 	err := service.Create(ctx, execution)
 
