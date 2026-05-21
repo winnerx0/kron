@@ -4,6 +4,7 @@ import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { ThemeProvider } from '@/lib/theme'
 import { Sidebar } from '@/components/sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { getAccessToken } from '@/lib/auth'
 
 const PUBLIC_PATHS = new Set(['/', '/login', '/callback'])
@@ -29,17 +30,15 @@ export function RootLayout() {
   }
 
   return (
-    <PostHogProvider client={posthog}>
-      <ThemeProvider>
-        <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-w-0 ml-56">
-            <main className="flex-1 overflow-y-auto p-8">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-      </ThemeProvider>
-    </PostHogProvider>
+    <ThemeProvider>
+      <SidebarProvider>
+        <Sidebar />
+        <SidebarInset className="h-screen overflow-hidden">
+          <main className="flex-1 overflow-y-auto p-8">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </ThemeProvider>
   )
 }
