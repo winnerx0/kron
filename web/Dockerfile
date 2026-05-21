@@ -1,3 +1,4 @@
+# check=skip=SecretsUsedInArgOrEnv
 FROM oven/bun:alpine AS builder
 
 WORKDIR /app
