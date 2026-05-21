@@ -37,11 +37,11 @@ export function Sidebar() {
   return (
     <ShadcnSidebar>
       <SidebarHeader className="flex items-center px-3">
-        <div className={`flex min-w-0 flex-1 items-center transition-all duration-300 ease-out ${open ? 'gap-2.5 px-2' : 'justify-center'}`}>
+        <div className={`flex min-w-0 items-center gap-2.5 px-2 overflow-hidden transition-all duration-300 ease-out ${open ? 'flex-1 max-w-full opacity-100' : 'flex-none max-w-0 opacity-0 px-0'}`}>
           <KronMark className="h-5 w-5 text-foreground shrink-0" />
-          <span className={`font-semibold text-[15px] tracking-tight ${labelClass}`}>Kron</span>
+          <span className="font-semibold text-[15px] tracking-tight whitespace-nowrap">Kron</span>
         </div>
-        <SidebarTrigger className={open ? '' : 'absolute left-16 top-3 hidden border border-border bg-card shadow-sm md:inline-flex'} />
+        <SidebarTrigger className={`transition-[margin] duration-300 ease-out ${open ? '' : 'mx-auto'}`} />
       </SidebarHeader>
 
       <SidebarContent className="space-y-0.5">
