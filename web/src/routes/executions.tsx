@@ -79,36 +79,82 @@ function isUnfinished(status: string) {
   return status === "pending" || status === "running";
 }
 
+function isSameExecution(a: Execution, b: Execution) {
+  return (
+    a.id === b.id &&
+    a.jobID === b.jobID &&
+    a.status === b.status &&
+    a.startedAt === b.startedAt &&
+    a.finishedAt === b.finishedAt
+  );
+}
+
+function mergeExecutions(
+  current: Execution[],
+  incoming: Execution[],
+): Execution[] {
+  const currentById = new Map(current.map((execution) => [execution.id, execution]));
+  const incomingById = new Map(incoming.map((execution) => [execution.id, execution]));
+  const newExecutions = incoming.filter((execution) => !currentById.has(execution.id));
+  const existingExecutions = current.map((execution) => {
+    const next = incomingById.get(execution.id);
+    if (!next) return execution;
+    return isSameExecution(execution, next) ? execution : next;
+  });
+
+  return [...newExecutions, ...existingExecutions];
+}
+
 export function ExecutionsPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
-    const load = async () => {
+    let cancelled = false;
+
+    const load = async ({
+      replace,
+      showLoading,
+    }: {
+      replace: boolean;
+      showLoading: boolean;
+    }) => {
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         const data = await getExecutionsPage(page, pageSize);
-        setExecutions(data.items || []);
+        if (cancelled) return;
+
+        const items = data.items || [];
+        setExecutions((current) =>
+          replace ? items : mergeExecutions(current, items),
+        );
         setTotal(data.total);
         setTotalPages(data.totalPages);
         setError(null);
-        setLastRefresh(Date.now());
       } catch (e) {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
-        setLoading(false);
+        if (!cancelled && showLoading) setLoading(false);
       }
     };
-    load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+
+    load({ replace: true, showLoading: true });
+    const t = setInterval(
+      () => load({ replace: false, showLoading: false }),
+      5000,
+    );
+
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
   }, [page, pageSize]);
 
   const statuses = [
@@ -123,7 +169,6 @@ export function ExecutionsPage() {
     filter === "all"
       ? executions
       : executions.filter((e) => e.status === filter);
-  const ago = Math.round((Date.now() - lastRefresh) / 1000);
 
   return (
     <div className="space-y-6 pb-24 animate-fade-in">
@@ -133,13 +178,6 @@ export function ExecutionsPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Real-time job execution history
           </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative rounded-full h-1.5 w-1.5 bg-emerald-500" />
-          </span>
-          {ago < 5 ? "Live" : `${ago}s ago`}
         </div>
       </div>
 
