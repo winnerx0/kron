@@ -115,13 +115,25 @@ function SidebarFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElem
   return <div className={cn('shrink-0 border-t border-border px-3 py-4', className)} {...props} />
 }
 
-function SidebarInset({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function SidebarInset({ className, style, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const { open, isMobile } = useSidebar()
+  const offset = open ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)'
+
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-1 flex-col transition-[margin-left,width] duration-300 ease-out md:ml-[var(--sidebar-offset)] md:w-[calc(100%-var(--sidebar-offset))]',
+        'flex min-w-0 flex-1 flex-col transition-[margin-left,width] duration-300 ease-out',
         className,
       )}
+      style={
+        isMobile
+          ? style
+          : {
+              marginLeft: offset,
+              width: `calc(100% - ${offset})`,
+              ...style,
+            }
+      }
       {...props}
     />
   )
