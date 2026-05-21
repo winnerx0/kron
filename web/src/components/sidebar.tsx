@@ -54,7 +54,7 @@ export function Sidebar() {
             title={open ? undefined : label}
             aria-label={label}
             onClick={closeOnMobile}
-            className={`flex items-center rounded-full text-sm transition-colors ${
+            className={`flex items-center rounded-md text-sm transition-colors ${
               open ? 'gap-3 px-2.5 py-2' : 'h-10 justify-center px-0'
             } ${
               isActive(to)
@@ -74,7 +74,7 @@ export function Sidebar() {
             title={open ? undefined : 'Settings'}
             aria-label="Settings"
             onClick={closeOnMobile}
-            className={`flex items-center rounded-full text-sm transition-colors ${
+            className={`flex items-center rounded-md text-sm transition-colors ${
               open ? 'gap-3 px-2.5 py-2' : 'h-10 justify-center px-0'
             } ${
               isActive('/settings')
@@ -93,7 +93,7 @@ export function Sidebar() {
           onClick={toggle}
           title={open ? undefined : theme === 'dark' ? 'Light mode' : 'Dark mode'}
           aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          className={`flex w-full items-center rounded-full text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
+          className={`flex w-full items-center rounded-md text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
             open ? 'gap-3 px-2.5 py-2' : 'h-10 justify-center px-0'
           }`}
         >
