@@ -22,20 +22,18 @@ services:
       - backend
   frontend:
     container_name: kron_frontend
-    image: oven/bun:alpine
-    working_dir: /app
-    command: sh -c "bun install && bun run dev --host"
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://kron.winnerx0.dev/api
+        - VITE_POSTHOG_API_KEY=${VITE_POSTHOG_API_KEY}
+        - VITE_POSTHOG_API_HOST=${VITE_POSTHOG_API_HOST}
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=https://kron.winnerx0.dev/api
-      - VITE_POSTHOG_API_KEY=${VITE_POSTHOG_API_KEY}
-      - VITE_POSTHOG_API_HOST=${VITE_POSTHOG_API_HOST}
     healthcheck:
-      test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ > /dev/null || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
