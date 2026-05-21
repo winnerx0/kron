@@ -36,7 +36,7 @@ export function Sidebar() {
 
   return (
     <ShadcnSidebar>
-      <SidebarHeader className={`flex px-3 transition-all duration-300 ease-out ${open ? 'items-center' : 'flex-col items-center justify-center gap-1'}`}>
+      <SidebarHeader className={`flex px-3 transition-all duration-300 ease-out ${open ? 'items-center' : 'flex-col items-center justify-center gap-1 border-b-0'}`}>
         <div className={`flex min-w-0 items-center gap-2.5 px-2 overflow-hidden transition-all duration-300 ease-out ${open ? 'flex-1 max-w-full opacity-100' : 'flex-none max-w-0 opacity-0 px-0'}`}>
           <KronMark className="h-5 w-5 text-foreground shrink-0" />
           <span className="font-semibold text-[15px] tracking-tight whitespace-nowrap">Kron</span>
