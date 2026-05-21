@@ -19,34 +19,40 @@ const NAV = [
 
 export function Sidebar() {
   const { theme, toggle } = useTheme()
-  const { open } = useSidebar()
+  const { isMobile, open, setOpen } = useSidebar()
   const router = useRouterState()
   const currentPath = router.location.pathname
 
   const isActive = (to: string) => currentPath === to || (to !== '/dashboard' && currentPath.startsWith(to))
+  const closeOnMobile = () => {
+    if (isMobile) setOpen(false)
+  }
+  const labelClass = `overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-300 ease-out ${
+    open ? 'max-w-32 translate-x-0 opacity-100' : 'max-w-0 -translate-x-1 opacity-0'
+  }`
+  const sectionLabelClass = `font-mono overflow-hidden whitespace-nowrap px-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground transition-[max-height,margin,opacity] duration-300 ease-out ${
+    open ? 'mb-3 max-h-5 opacity-100' : 'mb-0 max-h-0 opacity-0'
+  }`
 
   return (
     <ShadcnSidebar>
       <SidebarHeader className="flex items-center px-3">
-        <div className={`flex min-w-0 flex-1 items-center ${open ? 'gap-2.5 px-2' : 'justify-center'}`}>
+        <div className={`flex min-w-0 flex-1 items-center transition-all duration-300 ease-out ${open ? 'gap-2.5 px-2' : 'justify-center'}`}>
           <KronMark className="h-5 w-5 text-foreground shrink-0" />
-          {open ? <span className="font-semibold text-[15px] tracking-tight">Kron</span> : null}
+          <span className={`font-semibold text-[15px] tracking-tight ${labelClass}`}>Kron</span>
         </div>
-        <SidebarTrigger className={open ? '' : 'absolute left-16 top-3 border border-border bg-card shadow-sm'} />
+        <SidebarTrigger className={open ? '' : 'absolute left-16 top-3 hidden border border-border bg-card shadow-sm md:inline-flex'} />
       </SidebarHeader>
 
       <SidebarContent className="space-y-0.5">
-        {open ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground px-2 mb-3">
-            Menu
-          </p>
-        ) : null}
+        <p className={sectionLabelClass}>Menu</p>
         {NAV.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
             title={open ? undefined : label}
             aria-label={label}
+            onClick={closeOnMobile}
             className={`flex items-center rounded-full text-sm transition-colors ${
               open ? 'gap-3 px-2.5 py-2' : 'h-10 justify-center px-0'
             } ${
@@ -56,20 +62,17 @@ export function Sidebar() {
             }`}
           >
             <Icon className="w-4 h-4 shrink-0" />
-            {open ? label : null}
+            <span className={labelClass}>{label}</span>
           </Link>
         ))}
 
         <div className="pt-5">
-          {open ? (
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground px-2 mb-3">
-              System
-            </p>
-          ) : null}
+          <p className={sectionLabelClass}>System</p>
           <Link
             to="/settings"
             title={open ? undefined : 'Settings'}
             aria-label="Settings"
+            onClick={closeOnMobile}
             className={`flex items-center rounded-full text-sm transition-colors ${
               open ? 'gap-3 px-2.5 py-2' : 'h-10 justify-center px-0'
             } ${
@@ -79,7 +82,7 @@ export function Sidebar() {
             }`}
           >
             <Settings className="w-4 h-4 shrink-0" />
-            {open ? 'Settings' : null}
+            <span className={labelClass}>Settings</span>
           </Link>
         </div>
       </SidebarContent>
@@ -97,7 +100,7 @@ export function Sidebar() {
             ? <Sun className="w-4 h-4 shrink-0" />
             : <Moon className="w-4 h-4 shrink-0" />
           }
-          {open ? theme === 'dark' ? 'Light mode' : 'Dark mode' : null}
+          <span className={labelClass}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
       </SidebarFooter>
     </ShadcnSidebar>

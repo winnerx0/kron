@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button'
 
 type SidebarContextValue = {
   open: boolean
+  isMobile: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   toggleSidebar: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null)
+const MOBILE_QUERY = '(max-width: 767px)'
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)
@@ -25,14 +27,45 @@ function SidebarProvider({
   defaultOpen = true,
   children,
 }: React.PropsWithChildren<{ defaultOpen?: boolean }>) {
-  const [open, setOpen] = React.useState(defaultOpen)
+  const [isMobile, setIsMobile] = React.useState(() =>
+    typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
+  )
+  const [desktopOpen, setDesktopOpen] = React.useState(defaultOpen)
+  const [mobileOpen, setMobileOpen] = React.useState(false)
+  const open = isMobile ? mobileOpen : desktopOpen
+
+  React.useEffect(() => {
+    const media = window.matchMedia(MOBILE_QUERY)
+    const update = () => setIsMobile(media.matches)
+
+    update()
+    media.addEventListener('change', update)
+
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  const setOpen = React.useCallback<React.Dispatch<React.SetStateAction<boolean>>>(
+    (value) => {
+      const apply = (current: boolean) =>
+        typeof value === 'function' ? value(current) : value
+
+      if (isMobile) {
+        setMobileOpen(apply)
+      } else {
+        setDesktopOpen(apply)
+      }
+    },
+    [isMobile],
+  )
+
   const value = React.useMemo(
     () => ({
       open,
+      isMobile,
       setOpen,
       toggleSidebar: () => setOpen((current) => !current),
     }),
-    [open],
+    [isMobile, open, setOpen],
   )
 
   return (
@@ -40,6 +73,13 @@ function SidebarProvider({
       <div
         className="group/sidebar-wrapper flex min-h-screen w-full bg-background"
         data-state={open ? 'expanded' : 'collapsed'}
+        style={
+          {
+            '--sidebar-width': '14rem',
+            '--sidebar-width-icon': '4rem',
+            '--sidebar-offset': open ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)',
+          } as React.CSSProperties
+        }
       >
         {children}
       </div>
@@ -53,8 +93,8 @@ function Sidebar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border bg-card transition-[width] duration-200 ease-out',
-        open ? 'w-56' : 'w-16',
+        'fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-border bg-card shadow-xl transition-[width,transform,box-shadow] duration-300 ease-out md:w-[var(--sidebar-offset)] md:translate-x-0 md:shadow-none',
+        open ? 'translate-x-0' : '-translate-x-full',
         className,
       )}
       data-state={open ? 'expanded' : 'collapsed'}
@@ -76,15 +116,28 @@ function SidebarFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElem
 }
 
 function SidebarInset({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSidebar()
-
   return (
     <div
       className={cn(
-        'flex min-w-0 flex-1 flex-col transition-[margin-left] duration-200 ease-out',
-        open ? 'ml-56' : 'ml-16',
+        'flex min-w-0 flex-1 flex-col transition-[margin-left,width] duration-300 ease-out md:ml-[var(--sidebar-offset)] md:w-[calc(100%-var(--sidebar-offset))]',
         className,
       )}
+      {...props}
+    />
+  )
+}
+
+function SidebarOverlay({ className, ...props }: React.HTMLAttributes<HTMLButtonElement>) {
+  const { isMobile, open, setOpen } = useSidebar()
+
+  if (!isMobile || !open) return null
+
+  return (
+    <button
+      type="button"
+      aria-label="Close sidebar"
+      className={cn('fixed inset-0 z-20 bg-background/70 backdrop-blur-sm transition-opacity md:hidden', className)}
+      onClick={() => setOpen(false)}
       {...props}
     />
   )
@@ -116,6 +169,7 @@ export {
   SidebarFooter,
   SidebarHeader,
   SidebarInset,
+  SidebarOverlay,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,

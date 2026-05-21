@@ -289,8 +289,8 @@ export function ExecutionsPage() {
         </table>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 backdrop-blur">
-        <div className="ml-56 flex h-14 items-center justify-between px-8">
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 backdrop-blur transition-[left] duration-300 ease-out md:left-[var(--sidebar-offset)]">
+        <div className="flex h-14 items-center justify-between px-4 md:px-8">
           <span className="text-xs text-muted-foreground">
             Page {totalPages === 0 ? 0 : page} of {totalPages}
           </span>
