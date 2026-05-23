@@ -141,7 +141,7 @@ func (s *JobService) Delete(ctx context.Context, userID string, id string) error
 	}
 
 	activeRun, ok := s.activeRuns[existingJob.ID]
-	
+
 	if ok {
 		activeRun.cancel()
 		delete(s.activeRuns, existingJob.ID)
@@ -260,9 +260,10 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 			log.Println("Error updating execution", err)
 		}
 
-		if domain.ExecutionStatus == "FAILED" {
-			job.Status = g
+		if status == domain.FAILED {
+			job.Status = false
 			s.repo.Update(ctx, job)
+			return
 		}
 
 		if advanceSchedule {
