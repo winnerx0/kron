@@ -260,6 +260,11 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 			log.Println("Error updating execution", err)
 		}
 
+		if domain.ExecutionStatus == "FAILED" {
+			job.Status = g
+			s.repo.Update(ctx, job)
+		}
+
 		if advanceSchedule {
 			s.advanceNextRun(context.Background(), job)
 		}
