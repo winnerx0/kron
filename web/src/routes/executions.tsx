@@ -271,7 +271,7 @@ export function ExecutionsPage() {
                   <td className="px-5 py-3">
                     <StatusPill status={ex.status} />
                   </td>
-                  <td className="px-5 py-3 text-sm font-medium text-foreground">
+                  <td className="px-5 py-3 text-sm text-muted-foreground">
                     {ex.jobName}
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
