@@ -30,10 +30,23 @@ export interface Job {
 
 export interface Execution {
   id: string;
-  jobID: string;
+  jobId: string;
+  jobName: string;
   status: string;
   startedAt?: string;
   finishedAt?: string;
+}
+
+export interface ExecutionDetail {
+  id: string;
+  jobId: string;
+  jobName: string;
+  endpoint: string;
+  method: string;
+  status: string;
+  startedAt?: string;
+  finishedAt?: string;
+  responseBody: string;
 }
 
 export interface DashboardJob {
@@ -214,4 +227,10 @@ export async function getExecutionsPage(
 export async function getExecutions(jobID?: string): Promise<Execution[]> {
   const data = await getExecutionsPage(1, 10, jobID);
   return data.items;
+}
+
+export async function getExecution(id: string): Promise<ExecutionDetail> {
+  const res = await authedFetch(`/execution/${id}`);
+  await expectOk(res, "Failed to fetch execution");
+  return res.json();
 }

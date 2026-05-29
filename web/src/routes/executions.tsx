@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Activity } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Activity, ChevronRight } from "lucide-react";
 import { getExecutionsPage, type Execution } from "@/lib/api";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -82,7 +83,7 @@ function isUnfinished(status: string) {
 function isSameExecution(a: Execution, b: Execution) {
   return (
     a.id === b.id &&
-    a.jobID === b.jobID &&
+    a.jobName === b.jobName &&
     a.status === b.status &&
     a.startedAt === b.startedAt &&
     a.finishedAt === b.finishedAt
@@ -106,6 +107,7 @@ function mergeExecutions(
 }
 
 export function ExecutionsPage() {
+  const navigate = useNavigate();
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +216,7 @@ export function ExecutionsPage() {
           <thead>
             <tr className="border-b border-border bg-muted/40">
               <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Status</th>
-              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Job ID</th>
+              <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Job</th>
               <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Started</th>
               <th className="px-5 py-3 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Completed</th>
               <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Duration</th>
@@ -262,14 +264,15 @@ export function ExecutionsPage() {
               filtered.map((ex, idx) => (
                 <tr
                   key={ex.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors animate-slide-up"
+                  onClick={() => navigate({ to: "/executions/$id", params: { id: ex.id } })}
+                  className="group border-b border-border last:border-0 hover:bg-muted/30 transition-colors animate-slide-up cursor-pointer"
                   style={{ animationDelay: `${idx * 25}ms` }}
                 >
                   <td className="px-5 py-3">
                     <StatusPill status={ex.status} />
                   </td>
-                  <td className="px-5 py-3 font-mono text-xs text-muted-foreground">
-                    {ex.jobID.slice(0, 8)}
+                  <td className="px-5 py-3 text-sm font-medium text-foreground">
+                    {ex.jobName}
                   </td>
                   <td className="px-5 py-3 text-sm text-muted-foreground">
                     {fmt(ex.startedAt)}
@@ -278,9 +281,12 @@ export function ExecutionsPage() {
                     {isUnfinished(ex.status) ? "" : fmt(ex.finishedAt)}
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-xs text-muted-foreground">
-                    {isUnfinished(ex.status)
-                      ? ""
-                      : duration(ex.startedAt, ex.finishedAt)}
+                    <span className="inline-flex items-center gap-2 justify-end">
+                      {isUnfinished(ex.status)
+                        ? ""
+                        : duration(ex.startedAt, ex.finishedAt)}
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                    </span>
                   </td>
                 </tr>
               ))

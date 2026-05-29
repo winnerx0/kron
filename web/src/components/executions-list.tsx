@@ -148,8 +148,8 @@ export function ExecutionsList() {
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-20 shrink-0">
                 Status
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-20 shrink-0">
-                Job ID
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-32 shrink-0">
+                Job
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground flex-1">
                 Started
@@ -168,8 +168,8 @@ export function ExecutionsList() {
                 <div className="w-20 shrink-0">
                   <StatusDot status={execution.status} />
                 </div>
-                <span className="mono text-xs text-muted-foreground w-20 shrink-0 truncate">
-                  {execution.jobID.slice(0, 8)}
+                <span className="text-xs font-medium text-foreground w-32 shrink-0 truncate">
+                  {execution.jobName}
                 </span>
                 <span className="text-xs text-muted-foreground flex-1">
                   {formatDate(execution.startedAt)}
