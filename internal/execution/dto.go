@@ -16,7 +16,7 @@ type PaginatedExecutionsResponse struct {
 
 type ExecutionDTO struct {
 	ID       string                 `json:"id"`
-	JobID    string                 `json:"jobId"`
+	JobID    string                 `json:"jobID"`
 	JobName  string                 `json:"jobName"`
 	Status   domain.ExecutionStatus `json:"status"`
 	Started  time.Time              `json:"startedAt"`
@@ -25,7 +25,7 @@ type ExecutionDTO struct {
 
 type ExecutionDetailDTO struct {
 	ID           string                 `json:"id"`
-	JobID        string                 `json:"jobId"`
+	JobID        string                 `json:"jobID"`
 	JobName      string                 `json:"jobName"`
 	Endpoint     string                 `json:"endpoint"`
 	Method       string                 `json:"method"`

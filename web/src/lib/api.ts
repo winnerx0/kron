@@ -30,7 +30,7 @@ export interface Job {
 
 export interface Execution {
   id: string;
-  jobId: string;
+  jobID: string;
   jobName: string;
   status: string;
   startedAt?: string;
@@ -39,7 +39,7 @@ export interface Execution {
 
 export interface ExecutionDetail {
   id: string;
-  jobId: string;
+  jobID: string;
   jobName: string;
   endpoint: string;
   method: string;
