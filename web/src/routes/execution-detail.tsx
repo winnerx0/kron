@@ -135,7 +135,7 @@ export function ExecutionDetailPage() {
   const failed = execution?.status === "failed";
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-3xl">
+    <div className="space-y-6 animate-fade-in w-full">
       <button
         onClick={() => navigate({ to: "/executions" })}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
