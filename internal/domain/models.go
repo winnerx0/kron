@@ -33,11 +33,12 @@ type Job struct {
 }
 
 type Execution struct {
-	ID       string          `gorm:"type:uuid;primaryKey,default:uuid_generate_v7()" json:"id"`
-	JobID    string          `gorm:"type:uuid;not null;foreignKey:JobID;references:ID" json:"jobID"`
-	Status   ExecutionStatus `gorm:"type:varchar(20);not null" json:"status"`
-	Started  time.Time       `gorm:"not null" json:"startedAt"`
-	Finished time.Time       `gorm:"not null" json:"finishedAt"`
+	ID           string          `gorm:"type:uuid;primaryKey,default:uuid_generate_v7()"`
+	JobID        string          `gorm:"type:uuid;not null;foreignKey:JobID;references:ID"`
+	Status       ExecutionStatus `gorm:"type:varchar(20);not null"`
+	Started      time.Time       `gorm:"not null"`
+	Finished     time.Time       `gorm:"not null"`
+	ResponseBody string          `gorm:"type:text"`
 }
 
 type ExecutionStatus string

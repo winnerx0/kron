@@ -138,6 +138,7 @@ func (a *App) Start() error {
 
 			r.Route("/execution", func(r chi.Router) {
 				r.Get("/all", executionHandler.FindAll)
+				r.Get("/{id}", executionHandler.FindByID)
 			})
 
 			r.Route("/user", func(r chi.Router) {

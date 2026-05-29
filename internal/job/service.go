@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -253,9 +254,10 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 		return
 	}
 
-	finish := func(status domain.ExecutionStatus) {
+	finish := func(status domain.ExecutionStatus, responseBody string) {
 		newExecution.Finished = time.Now()
 		newExecution.Status = status
+		newExecution.ResponseBody = responseBody
 		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
 			log.Println("Error updating execution", err)
 		}
@@ -273,7 +275,7 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 
 	select {
 	case <-executionCtx.Done():
-		finish(domain.STOPPED)
+		finish(domain.STOPPED, "")
 		return
 	default:
 	}
@@ -282,14 +284,14 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 		req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
 		if err != nil {
 			log.Println("Error creating request", err)
-			finish(domain.FAILED)
+			finish(domain.FAILED, err.Error())
 			return
 		}
 
 		headers, err := s.decryptHeaders(job.Headers)
 		if err != nil {
 			log.Println("Error decrypting job headers", err)
-			finish(domain.FAILED)
+			finish(domain.FAILED, err.Error())
 			return
 		}
 
@@ -301,42 +303,54 @@ func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSche
 		if err != nil {
 			log.Println("Error sending request", err)
 			if errors.Is(executionCtx.Err(), context.Canceled) || errors.Is(executionCtx.Err(), context.DeadlineExceeded) {
-				finish(domain.STOPPED)
+				finish(domain.STOPPED, "")
 				return
 			}
 			if attempt < 4 {
 				select {
 				case <-executionCtx.Done():
-					finish(domain.STOPPED)
+					finish(domain.STOPPED, "")
 					return
 				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
 				}
 				continue
 			}
-			finish(domain.FAILED)
+			finish(domain.FAILED, err.Error())
 			return
 		}
 
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body := readResponseBody(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
 			log.Printf("Error: received status code %d for job %s", resp.StatusCode, job.Name)
-			resp.Body.Close()
 			if resp.StatusCode >= 500 && attempt < 4 {
 				select {
 				case <-executionCtx.Done():
-					finish(domain.STOPPED)
+					finish(domain.STOPPED, "")
 					return
 				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
 				}
 				continue
 			}
-			finish(domain.FAILED)
+			finish(domain.FAILED, fmt.Sprintf("status %d: %s", resp.StatusCode, body))
 			return
 		}
 
-		resp.Body.Close()
-		finish(domain.SUCCESS)
+		finish(domain.SUCCESS, body)
 		return
 	}
+}
+
+// readResponseBody reads up to 64KB of the response body so that execution
+// details can show what the endpoint returned without storing unbounded data.
+func readResponseBody(r io.Reader) string {
+	const maxBodyBytes = 64 * 1024
+	data, err := io.ReadAll(io.LimitReader(r, maxBodyBytes))
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func (s *JobService) advanceNextRun(ctx context.Context, job domain.Job) {

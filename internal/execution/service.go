@@ -8,6 +8,7 @@ import (
 
 type Service interface {
 	FindAll(ctx context.Context, page int, pageSize int, jobID string) (PaginatedExecutionsResponse, error)
+	FindByID(ctx context.Context, id string) (ExecutionDetailDTO, error)
 	FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error)
 	Create(ctx context.Context, execution domain.Execution) error
 }
@@ -49,6 +50,10 @@ func (s *ExecutionService) FindAll(ctx context.Context, page int, pageSize int, 
 		PageSize:   pageSize,
 		TotalPages: totalPages,
 	}, nil
+}
+
+func (s *ExecutionService) FindByID(ctx context.Context, id string) (ExecutionDetailDTO, error) {
+	return s.repo.FindByID(ctx, id)
 }
 
 func (s *ExecutionService) FindByJobID(ctx context.Context, jobID string) ([]domain.Execution, error) {
