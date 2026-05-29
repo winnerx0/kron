@@ -197,7 +197,7 @@ export function DashboardPage() {
                       className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor} ${ex.status === "running" ? "animate-pulse" : ""}`}
                     />
                     <span className="min-w-0 truncate text-xs text-muted-foreground">
-                      {ex.jobName || ex.jobID.slice(0, 8)}
+                      {ex.jobName || ex.jobID?.slice(0, 8) || "Unknown"}
                     </span>
                     <span className="capitalize text-xs text-muted-foreground">
                       {ex.status}
