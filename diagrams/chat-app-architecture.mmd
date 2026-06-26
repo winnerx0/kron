@@ -1,0 +1,25 @@
+architecture
+group Clients
+  client[Web/Mobile Client]
+end
+
+group Cloud
+  gateway(API Gateway)
+  auth(Auth Service)
+  chat(Chat Service)
+  broker(Message Broker)
+  msgs(Messages DB)
+  users(Users DB)
+  cache(Cache (Redis))
+  push(Push Notification Service)
+end
+
+client --> gateway
+gateway --> auth
+gateway --> chat
+chat --> broker
+broker --> chat
+chat --> msgs
+chat --> users
+chat --> cache
+gateway --> push
