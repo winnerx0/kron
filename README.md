@@ -14,7 +14,7 @@ Kron is an authenticated HTTP job scheduler. It lets users create cron-based HTT
 - Execution tracking with status, start time, completion time, duration, filtering, pagination, and periodic refresh.
 - User settings page with profile details and sign out.
 - Swagger API documentation served by the backend.
-- Docker Compose stack for Nginx, backend, frontend, and PostgreSQL.
+- Docker Compose stack for the backend, PostgreSQL, and Redis.
 - Optional PostHog analytics hooks in the frontend.
 
 ## Stack
@@ -22,7 +22,7 @@ Kron is an authenticated HTTP job scheduler. It lets users create cron-based HTT
 - Backend: Go, Chi, GORM, PostgreSQL
 - Frontend: React, Vite, TanStack Router, Tailwind CSS, lucide-react
 - Auth: Google OAuth 2.0, JWT access tokens, rotating refresh tokens
-- Runtime: Docker Compose with Nginx, backend, frontend, and Postgres services
+- Runtime: Docker Compose for the backend and Postgres; frontend deployed to Vercel
 
 ## Requirements
 
@@ -59,11 +59,10 @@ docker compose up --build
 
 Local services:
 
-- App through Nginx: `http://localhost:80`
-- Frontend dev server: `http://localhost:3000`
+- Frontend dev server (run separately, see below): `http://localhost:3000`
 - Backend API: `http://localhost:5000`
 - Postgres: `localhost:5432`
-- Swagger UI: `http://localhost:80/swagger/index.html`
+- Swagger UI: `http://localhost:5000/swagger/index.html`
 
 To stop services:
 
@@ -83,6 +82,7 @@ docker compose up --build
 Backend:
 
 ```sh
+cd backend
 go test ./...
 go run ./cmd/kron
 ```
@@ -96,7 +96,7 @@ bun run dev
 bun run type-check
 ```
 
-The frontend expects `VITE_API_URL`; Docker sets it to `http://localhost:80/api`.
+The frontend expects `VITE_API_URL`, which points at the backend API (for example `http://localhost:5000/api`).
 
 ## Authentication Flow
 
@@ -162,18 +162,17 @@ Schedules use standard five-field cron expressions.
 ## Project Layout
 
 ```text
-cmd/kron/                 Backend entrypoint
-internal/auth/            Token issuing and refresh logic
-internal/http/            HTTP handlers and route wiring
-internal/job/             Job domain, scheduler, execution logic
-internal/execution/       Execution persistence and pagination
-internal/dashboard/       Dashboard summary aggregation
-internal/user/            User model, repository, DTOs
-internal/oauth/           Google OAuth login and callback logic
-internal/refresh_token/   Refresh token persistence
-internal/secret/          Header secret encryption/redaction
-web/                      React frontend
-nginx/                    Development and production Nginx configs
+backend/cmd/kron/                 Backend entrypoint
+backend/internal/auth/            Token issuing and refresh logic
+backend/internal/http/            HTTP handlers and route wiring
+backend/internal/job/             Job domain, scheduler, execution logic
+backend/internal/execution/       Execution persistence and pagination
+backend/internal/dashboard/       Dashboard summary aggregation
+backend/internal/user/            User model, repository, DTOs
+backend/internal/oauth/           Google OAuth login and callback logic
+backend/internal/refresh_token/   Refresh token persistence
+backend/internal/secret/          Header secret encryption/redaction
+web/                              React frontend
 ```
 
 ## Verification
@@ -181,6 +180,6 @@ nginx/                    Development and production Nginx configs
 Run both checks before pushing changes:
 
 ```sh
-go test ./...
+cd backend && go vet ./... && go test ./...
 cd web && bun run type-check
 ```
