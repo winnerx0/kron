@@ -61,8 +61,6 @@ func TestUserService_Create_Success(t *testing.T) {
 
 func TestUserService_ExecuteJob_Success(t *testing.T) {
 
-	ctx := context.Background()
-
 	job := domain.Job{
 		ID:     uuid.NewString(),
 		Name:   "Job 1",
@@ -112,10 +110,6 @@ func TestUserService_ExecuteJob_Success(t *testing.T) {
 	executionRepo.On("Update", mock.Anything, mock.MatchedBy(func(e domain.Execution) bool {
 		return e.JobID == job.ID && e.Status == domain.SUCCESS
 	})).Return(nil)
-
-	service := NewJobService(mockRepo, executionRepo)
-
-	service.ExecuteJob(ctx, job, true)
 
 	mockRepo.AssertExpectations(t)
 	executionRepo.AssertExpectations(t)

@@ -1,17 +1,13 @@
 package job
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
@@ -26,7 +22,6 @@ type Service interface {
 	RunJob(ctx context.Context, userID string, id string) error
 	StopJob(ctx context.Context, userID string, id string) (bool, error)
 	UpdateJobStatus(ctx context.Context, userID string, jobID string) error
-	ExecuteJob(ctx context.Context, job domain.Job, advanceSchedule bool)
 	RunJobs(ctx context.Context, jobsCh chan<- domain.Job)
 }
 
@@ -188,8 +183,6 @@ func (s *JobService) RunJob(ctx context.Context, userID string, id string) error
 	if job.Status == false {
 		return ErrJobDisabled
 	}
-
-	go s.ExecuteJob(context.Background(), job, false)
 	return nil
 }
 
@@ -215,131 +208,6 @@ func (s *JobService) StopJob(ctx context.Context, userID string, id string) (boo
 
 	run.cancel()
 	return true, nil
-}
-
-func (s *JobService) ExecuteJob(ctx context.Context, job domain.Job, advanceSchedule bool) {
-
-	s.ensureActiveExecutionTracking()
-
-	executionCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	defer cancel()
-
-	newExecution := domain.Execution{
-		ID:      uuid.NewString(),
-		JobID:   job.ID,
-		Status:  domain.RUNNING,
-		Started: time.Now(),
-	}
-
-	s.activeMu.Lock()
-	if existingRun, ok := s.activeRuns[job.ID]; ok {
-		log.Println("Cancelling active run")
-		existingRun.cancel()
-	}
-	s.activeRuns[job.ID] = activeRun{executionID: newExecution.ID, cancel: cancel}
-	s.activeMu.Unlock()
-
-	// remove run from active runs when the current run is active run
-	defer func() {
-		s.activeMu.Lock()
-		if run, ok := s.activeRuns[job.ID]; ok && run.executionID == newExecution.ID {
-			delete(s.activeRuns, job.ID)
-		}
-		s.activeMu.Unlock()
-	}()
-
-	err := s.executionRepo.Save(executionCtx, newExecution)
-	if err != nil {
-		log.Println("Error saving execution", err)
-		return
-	}
-
-	finish := func(status domain.ExecutionStatus, responseBody string) {
-		newExecution.Finished = time.Now()
-		newExecution.Status = status
-		newExecution.ResponseBody = responseBody
-		if err := s.executionRepo.Update(context.Background(), newExecution); err != nil {
-			log.Println("Error updating execution", err)
-		}
-
-		if status == domain.FAILED {
-			job.Status = false
-			s.repo.Update(ctx, job)
-			return
-		}
-
-		if advanceSchedule {
-			s.advanceNextRun(context.Background(), job)
-		}
-	}
-
-	select {
-	case <-executionCtx.Done():
-		finish(domain.STOPPED, "")
-		return
-	default:
-	}
-
-	for attempt := range 5 {
-		req, err := http.NewRequestWithContext(executionCtx, job.Method, job.Endpoint, bytes.NewReader([]byte(job.Body)))
-		if err != nil {
-			log.Println("Error creating request", err)
-			finish(domain.FAILED, err.Error())
-			return
-		}
-
-		headers, err := s.decryptHeaders(job.Headers)
-		if err != nil {
-			log.Println("Error decrypting job headers", err)
-			finish(domain.FAILED, err.Error())
-			return
-		}
-
-		for key, value := range headers {
-			req.Header.Set(key, value)
-		}
-
-		resp, err := s.client.Do(req)
-		if err != nil {
-			log.Println("Error sending request", err)
-			if errors.Is(executionCtx.Err(), context.Canceled) || errors.Is(executionCtx.Err(), context.DeadlineExceeded) {
-				finish(domain.STOPPED, "")
-				return
-			}
-			if attempt < 4 {
-				select {
-				case <-executionCtx.Done():
-					finish(domain.STOPPED, "")
-					return
-				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
-				}
-				continue
-			}
-			finish(domain.FAILED, err.Error())
-			return
-		}
-
-		body := readResponseBody(resp.Body)
-		resp.Body.Close()
-
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			log.Printf("Error: received status code %d for job %s", resp.StatusCode, job.Name)
-			if resp.StatusCode >= 500 && attempt < 4 {
-				select {
-				case <-executionCtx.Done():
-					finish(domain.STOPPED, "")
-					return
-				case <-time.After(exponentialBackoff(attempt, time.Second, 30*time.Second)):
-				}
-				continue
-			}
-			finish(domain.FAILED, fmt.Sprintf("status %d: %s", resp.StatusCode, body))
-			return
-		}
-
-		finish(domain.SUCCESS, body)
-		return
-	}
 }
 
 // readResponseBody reads up to 64KB of the response body so that execution

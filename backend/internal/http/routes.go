@@ -1,7 +1,7 @@
 package http
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,11 +13,11 @@ import (
 	"github.com/winnerx0/kron/internal/config"
 	"github.com/winnerx0/kron/internal/dashboard"
 	"github.com/winnerx0/kron/internal/database"
-	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
 	"github.com/winnerx0/kron/internal/middleware"
 	"github.com/winnerx0/kron/internal/oauth"
+	rabbitmq "github.com/winnerx0/kron/internal/queue"
 	refreshtoken "github.com/winnerx0/kron/internal/refresh_token"
 	"github.com/winnerx0/kron/internal/secret"
 	"github.com/winnerx0/kron/internal/user"
@@ -39,6 +39,14 @@ func (a *App) Start() error {
 
 	db := database.Start()
 
+	rabbitMQClient := rabbitmq.NewRabbitMQClient(a.config.RabbitMQURL)
+
+	err := rabbitmq.Setup(rabbitMQClient.Ch)
+
+	if err != nil {
+		log.Fatal("Failed to setup RabbitMQ Queues ", err)
+	}
+
 	executionRepo := execution.NewPostgresRepository(db)
 
 	executionService := execution.NewExecutionService(executionRepo)
@@ -56,6 +64,7 @@ func (a *App) Start() error {
 	jobRepo := job.NewRepository(db)
 
 	secretManager, err := secret.NewAESGCMManager(a.config.EncryptionKey)
+	
 	if err != nil {
 		return fmt.Errorf("failed to initialize secret encryption: %w", err)
 	}
@@ -68,23 +77,21 @@ func (a *App) Start() error {
 
 	dashboardHandler := NewDashboardHandler(dashboardService)
 
-	jobsCh := make(chan domain.Job, 10)
+	// jobsCh := make(chan domain.Job, 10)
 
-	workerCount := 5
+	// func(jobs <-chan domain.Job) {
+	// 	for range workerCount {
+	// 		go func() {
+	// 			log.Println("Worker started and waiting for jobs")
+	// 			for j := range jobs {
+	// 				jobService.ExecuteJob(context.Background(), j, true)
+	// 			}
 
-	func(jobs <-chan domain.Job) {
-		for range workerCount {
-			go func() {
-				log.Println("Worker started and waiting for jobs")
-				for j := range jobs {
-					jobService.ExecuteJob(context.Background(), j, true)
-				}
+	// 		}()
+	// 	}
+	// }(jobsCh)
 
-			}()
-		}
-	}(jobsCh)
-
-	go jobService.RunJobs(context.Background(), jobsCh)
+	// go jobService.RunJobs(context.Background(), jobsCh)
 
 	jobHandler := NewJobHandler(jobService)
 
@@ -107,6 +114,18 @@ func (a *App) Start() error {
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
+
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+
+		jsonbytes, err := json.Marshal(map[string]string{"name": "winner"})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rabbitMQClient.PublishMessage("jobs_queue", jsonbytes)
+		w.WriteHeader(200)
+		w.Write([]byte("Done"))
+	})
 
 	r.Route("/api", func(r chi.Router) {
 
@@ -161,6 +180,6 @@ func (a *App) Start() error {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	fmt.Println("Listening to server on port 5000")
-	return http.ListenAndServe(":5000", r)
+	fmt.Printf("Listening to server on port %s\n", a.config.Port)
+	return http.ListenAndServe(fmt.Sprintf(":%s", a.config.Port), r)
 }
