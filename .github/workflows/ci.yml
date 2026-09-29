@@ -1,0 +1,35 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Vet backend
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Build backend
+        working-directory: backend
+        run: CGO_ENABLED=0 go build ./...
