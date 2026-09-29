@@ -10,12 +10,12 @@ import (
 
 type Poller struct {
 	jobRepo   job.Repository
-	publisher *Publisher
-	locker    *Locker
+	publisher JobPublisher
+	locker    JobLocker
 	interval  time.Duration
 }
 
-func NewPoller(jobRepo job.Repository, publisher *Publisher, locker *Locker, interval time.Duration) *Poller {
+func NewPoller(jobRepo job.Repository, publisher JobPublisher, locker JobLocker, interval time.Duration) JobPoller {
 	return &Poller{
 		jobRepo:   jobRepo,
 		publisher: publisher,
@@ -26,7 +26,7 @@ func NewPoller(jobRepo job.Repository, publisher *Publisher, locker *Locker, int
 
 func (p *Poller) Run(ctx context.Context) {
 
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 30)
 
 	defer ticker.Stop()
 

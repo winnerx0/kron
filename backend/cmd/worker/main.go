@@ -9,15 +9,19 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+	"github.com/robfig/cron/v3"
 	"github.com/winnerx0/kron/internal/config"
 	"github.com/winnerx0/kron/internal/database"
 	"github.com/winnerx0/kron/internal/domain"
 	"github.com/winnerx0/kron/internal/execution"
 	"github.com/winnerx0/kron/internal/job"
 	rabbitmq "github.com/winnerx0/kron/internal/queue"
+	"github.com/winnerx0/kron/internal/scheduler"
 	"github.com/winnerx0/kron/internal/secret"
 )
 
@@ -38,6 +42,10 @@ func main() {
 	database := database.NewDatabase(config.DBHost, config.DBUser, config.DBPassword, config.DBPort, config.DBName)
 
 	db := database.Start()
+
+	rdb := redis.NewClient(&redis.Options{Addr: "redis:6379", DB: 0, Protocol: 2})
+
+	locker := scheduler.NewLocker(rdb, time.Minute*5, "")
 
 	jobRepo := job.NewRepository(db)
 
@@ -73,12 +81,15 @@ func main() {
 			Started: time.Now(),
 		}
 
+		executionRepo.Save(executionCtx, newExecution)
+
 		finish := func(status domain.ExecutionStatus, responseBody string) {
 			newExecution.Finished = time.Now()
 			newExecution.Status = status
 			newExecution.ResponseBody = responseBody
 			if err := executionRepo.Update(executionCtx, newExecution); err != nil {
 				log.Println("Error updating execution", err)
+				return
 			}
 
 			if status == domain.FAILED {
@@ -87,12 +98,21 @@ func main() {
 				return
 			}
 
+			scheduler, err := cron.ParseStandard(job.Schedule)
+
+			if err != nil {
+				log.Println("Error parsing schedule", err)
+				return
+			}
+			locker.Release(executionCtx, job.ID, job.NextRunAt)
+			job.NextRunAt = scheduler.Next(time.Now())
+			jobRepo.Update(executionCtx, job)
 		}
 
 		select {
 		case <-executionCtx.Done():
 			finish(domain.STOPPED, "")
-			return
+			continue
 		default:
 		}
 
@@ -120,13 +140,13 @@ func main() {
 				log.Println("Error sending request", err)
 				if errors.Is(executionCtx.Err(), context.Canceled) || errors.Is(executionCtx.Err(), context.DeadlineExceeded) {
 					finish(domain.STOPPED, "")
-					return
+					continue
 				}
 				if attempt < 4 {
 					select {
 					case <-executionCtx.Done():
 						finish(domain.STOPPED, "")
-						return
+						continue
 					case <-time.After(30 * time.Second):
 					}
 					continue
@@ -134,7 +154,7 @@ func main() {
 
 				//TODO: for this add a dead letter queue to send failed jobs due to bad requests
 				finish(domain.FAILED, err.Error())
-				
+
 				continue
 			}
 
@@ -147,25 +167,28 @@ func main() {
 					select {
 					case <-executionCtx.Done():
 						finish(domain.STOPPED, "")
-						return
+						continue
 					case <-time.After(30 * time.Second):
 					}
 					continue
 				}
 				finish(domain.FAILED, fmt.Sprintf("status %d: %s", resp.StatusCode, body))
 				err := conn.Ch.Nack(msg.DeliveryTag, false, true)
-				
+
 				if err != nil {
 					log.Println("Failed to nack message: ", err)
 				}
-				continue
+				break
 			}
 
 			finish(domain.SUCCESS, body)
+			jobRepo.Update(executionCtx, job)
 			err = conn.Ch.Ack(msg.DeliveryTag, false)
 			if err != nil {
 				log.Println("Failed to ack message: ", err)
 			}
+
+			break
 		}
 	}
 }

@@ -1,33 +1,36 @@
-package execution
+package execution_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/winnerx0/kron/internal/mocks"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/winnerx0/kron/internal/domain"
+	"github.com/winnerx0/kron/internal/execution"
 )
 
-func TestExecutionService_Create_Success(t *testing.T){
+func TestExecutionService_Create_Success(t *testing.T) {
 
 	ctx := context.Background()
 
-	execution := domain.Execution{
-		ID:     uuid.NewString(),
-		JobID:  uuid.NewString(),
-		Status: domain.RUNNING,
-		Started: time.Now(),
+	executionRecord := domain.Execution{
+		ID:       uuid.NewString(),
+		JobID:    uuid.NewString(),
+		Status:   domain.RUNNING,
+		Started:  time.Now(),
 		Finished: time.Now().Add(1 * time.Minute),
 	}
 
-	mockRepo := new(MockRepository)
+	mockRepo := new(mocks.MockExecutionRepository)
 
-	mockRepo.On("Save", ctx, execution).Return(nil)
+	mockRepo.On("Save", ctx, executionRecord).Return(nil)
 
-	service := NewExecutionService(mockRepo)
+	service := execution.NewExecutionService(mockRepo)
 
-	err := service.Create(ctx, execution)
+	err := service.Create(ctx, executionRecord)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

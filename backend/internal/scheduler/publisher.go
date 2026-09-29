@@ -18,7 +18,7 @@ type Publisher struct {
 	confirms chan amqp.Confirmation
 }
 
-func NewPublisher(ch *amqp.Channel, queueName string) (*Publisher, error) {
+func NewPublisher(ch *amqp.Channel, queueName string) (JobPublisher, error) {
 
 	if _, err := ch.QueueDeclare(queueName, true, false, false, false, nil); err != nil {
 		return nil, fmt.Errorf("failed to declare queue: %w", err)

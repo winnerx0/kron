@@ -16,7 +16,7 @@ type Locker struct {
 	instanceId string
 }
 
-func NewLocker(rdb *redis.Client, ttl time.Duration, instanceId string) *Locker {
+func NewLocker(rdb *redis.Client, ttl time.Duration, instanceId string) JobLocker {
 	return &Locker{
 		rdb:        rdb,
 		ttl:        ttl,
@@ -28,7 +28,6 @@ func (t *Locker) tickKey(jobId string, scheduleAt time.Time) string {
 	return fmt.Sprintf("tick:%s%d", jobId, scheduleAt.Unix())
 }
 
-// find out what the scheduleAt parameter is for 
 func (t *Locker) Claim(ctx context.Context, jobID string, scheduleAt time.Time) (bool, error) {
 	key := t.tickKey(jobID, scheduleAt)
 
@@ -39,4 +38,11 @@ func (t *Locker) Claim(ctx context.Context, jobID string, scheduleAt time.Time) 
 	}
 
 	return ok, nil
+}
+
+func (t *Locker) Release(ctx context.Context, jobID string, scheduleAt time.Time) error {
+	key := t.tickKey(jobID, scheduleAt)
+
+	_, err := t.rdb.Del(ctx, key).Result()
+	return err
 }
