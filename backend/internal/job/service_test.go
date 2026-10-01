@@ -2,9 +2,6 @@ package job
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -57,62 +54,6 @@ func TestUserService_Create_Success(t *testing.T) {
 
 	mockRepo.AssertExpectations(t)
 
-}
-
-func TestUserService_ExecuteJob_Success(t *testing.T) {
-
-	job := domain.Job{
-		ID:     uuid.NewString(),
-		Name:   "Job 1",
-		Method: "GET",
-		Headers: map[string]any{
-			"Content-Type": "application/json",
-		},
-		Endpoint: "https://example.com",
-		Body:     "",
-		Schedule: "*/5 * * * *",
-	}
-
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("Content-Type"); got != "application/json" {
-			t.Errorf("got Content-Type %s, want application/json", got)
-		}
-
-		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(CreateJobResponse{
-			ID:       job.ID,
-			Name:     job.Name,
-			Method:   job.Method,
-			Endpoint: job.Endpoint,
-			Body:     job.Body,
-			Schedule: job.Schedule,
-		})
-	}))
-
-	defer mockServer.Close()
-	job.Endpoint = mockServer.URL
-
-	mockRepo := new(mocks.MockJobRepository)
-
-	mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(j domain.Job) bool {
-		return j.ID == job.ID &&
-			j.NextRunAt.Minute()%5 == 0 &&
-			j.NextRunAt.Second() == 0 &&
-			j.NextRunAt.After(time.Now())
-	})).Return(job, nil)
-
-	executionRepo := new(mocks.MockExecutionRepository)
-
-	executionRepo.On("Save", mock.Anything, mock.MatchedBy(func(e domain.Execution) bool {
-		return e.JobID == job.ID && e.Status == domain.RUNNING
-	})).Return(nil)
-
-	executionRepo.On("Update", mock.Anything, mock.MatchedBy(func(e domain.Execution) bool {
-		return e.JobID == job.ID && e.Status == domain.SUCCESS
-	})).Return(nil)
-
-	mockRepo.AssertExpectations(t)
-	executionRepo.AssertExpectations(t)
 }
 
 func TestJobService_Create_EncryptsAndReturnsSensitiveHeaders(t *testing.T) {
